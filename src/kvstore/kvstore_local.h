@@ -90,6 +90,12 @@ class KVStoreLocal : public KVStore {
     InitImpl(keys, values);
   }
 
+  void Init_KVSpecial(const std::vector<int>& keys,
+            const std::vector<NDArray>& values, const std::string strType) override {
+    SetKeyType(kIntKey);
+    InitImpl_KVSpecial(keys, values, strType);
+  }
+
   void Push(const std::vector<int>& keys,
             const std::vector<NDArray>& values,
             int priority) override {
@@ -154,6 +160,9 @@ class KVStoreLocal : public KVStore {
     }
     comm_->SetGradientCompression(gradient_compression_);
   }
+
+  virtual void InitImpl_KVSpecial(const std::vector<int>& keys,
+                        const std::vector<NDArray>& values, const std::string strType) = 0;
 
   virtual void PushImpl(const std::vector<int>& keys,
                         const std::vector<NDArray>& values,

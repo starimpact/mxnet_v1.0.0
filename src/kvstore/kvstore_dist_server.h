@@ -45,7 +45,7 @@ enum class CommandType {
 };
 
 enum class DataHandleType {
-  kDefaultPushPull, kCompressedPushPull, kRowSparsePushPull
+  kDefaultPushPull, kCompressedPushPull, kRowSparsePushPull, kKVSpecialPushPull
 };
 
 /**

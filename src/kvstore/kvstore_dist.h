@@ -203,6 +203,27 @@ class KVStoreDist : public KVStoreLocal {
     }
   }
 
+  void InitImpl_KVSpecial(const std::vector<int>& keys,
+                const std::vector<NDArray>& values, const std::string strType) override {
+    CheckUnique(keys);
+    for (size_t i = 0; i < keys.size(); ++i) {
+      comm_->Init(keys[i], values[i].storage_type(), values[i].shape(), values[i].dtype());
+    }
+    {
+      Push_KVSpecial_(keys, values, strType, 0, false);
+      // wait until the push is finished
+      for (const int key : keys) {
+        comm_buf_[key].WaitToWrite();
+        compr_buf_[key].WaitToWrite();
+      }
+    } else {
+      // do nothing
+    }
+    if (!ps::Postoffice::Get()->is_recovery()) {
+      Barrier();
+    }
+  }
+
   void PushImpl(const std::vector<int>& keys,
                 const std::vector<NDArray>& values,
                 int priority) override {
@@ -472,6 +493,78 @@ class KVStoreDist : public KVStoreLocal {
   }
 
 
+  void Push_KVSpecial_(const std::vector<int>& keys,
+             const std::vector<NDArray>& values,
+             const std::string strType,
+             int priority,
+             bool do_merge) {
+    // first aggregate the values over keys
+    std::vector<int> uniq_keys;
+    std::vector<std::vector<NDArray> > grouped_vals;
+    GroupKVPairsPush(keys, values, &uniq_keys, &grouped_vals);
+
+    for (size_t i = 0; i < uniq_keys.size(); ++i) {
+      // merge over devices
+      int key = uniq_keys[i];
+      const auto& vals = grouped_vals[i];
+      NDArray merged = do_merge ? comm_->Reduce(key, vals, priority) : vals[0];
+
+      const auto storage_type = merged.storage_type();
+      auto &comm_buf = comm_buf_[key];
+      if (merged.ctx().dev_mask() == cpu::kDevMask) {
+        // Start of a push doesn't guarantee that the previous pushes are completed.
+        // This shouldn't affect training of networks though because training involves
+        // a sequence of push, pull, then push. This imposes ordering that the
+        // second push happens after the first pull, and the pull happens after first push.
+        comm_buf = merged;  // avoid memory copy
+      } else {
+        if (comm_buf.is_none()) {
+          if (storage_type == kDefaultStorage) {
+            comm_buf = NDArray(merged.shape(), pinned_ctx_, true, merged.dtype());
+          }
+        }
+        CopyFromTo(merged, &comm_buf);
+      }
+
+      // push to servers
+      if (storage_type == kDefaultStorage) {
+        PSKV& pskv = EncodeKVSpecialKey(key, comm_buf.shape().Size(), strType, true);
+        PushKVSpecial(key, comm_buf, pskv, strType, priority);
+      } else {
+        LOG(FATAL) << "unknown storage type";
+      }
+    }
+  }
+
+
+  void PushKVSpecial(int key, const NDArray &send_buf, const PSKV& pskv, std::string strType, int priority) {
+    auto push_to_servers =
+        [this, key, pskv, strType, send_buf](RunContext rctx, Engine::CallbackOnComplete cb) {
+          // convert to ps keys
+          size_t size = send_buf.shape().Size();
+          real_t* data = send_buf.data().dptr<real_t>();
+#if MKL_EXPERIMENTAL == 1
+          mkl_set_tblob_eager_mode(send_buf.data());
+#endif
+          // do push. false means no delete
+          ps::SArray<real_t> vals(data, size, false);
+          CHECK_NOTNULL(ps_worker_)->ZPush_KVSpecial(
+              pskv.keys, vals, pskv.lens, strType,
+              static_cast<int>(DataHandleType::kKVSpecialPushPull), [cb]() { cb(); });
+        };
+    Engine::Get()->PushAsync(
+        push_to_servers,
+        pinned_ctx_,
+        {send_buf.var()},
+        {},
+        FnProperty::kNormal,
+        priority,
+        PROFILER_MESSAGE("KVStoreDistKVSpecialPush"));
+  }
+
+
+
+
   // pull row sparse weight into `recv_buf` based on indices given by `indices`
   void PullRowSparse_(const int key, const NDArray& recv_buf,
                       const NDArray& indices, int priority) {
@@ -711,6 +804,45 @@ class KVStoreDist : public KVStoreLocal {
         pskv.lens.push_back(unit_len);
       }
       pskv.size = size;
+    }
+    return pskv;
+  }
+
+  inline PSKV& EncodeKVSpecialKey(int key, size_t size, std::string strType, bool is_push) {
+    mu_.lock();
+    PSKV& pskv = ps_kv_[key];
+    mu_.unlock();
+    if (!pskv.keys.empty()) {
+      CHECK_EQ(static_cast<size_t>(pskv.size), size) << "The value size cannot be changed";
+    } else {
+      auto krs = ps::Postoffice::Get()->GetServerKeyRanges();
+      int num_servers = krs.size();
+      CHECK_GT(num_servers, 0);
+
+      // a simple heuristic for load balance
+      if (size < bigarray_bound_) {
+        // send it to a single random picked server
+        int server = (key * 9973) % num_servers;
+        ps::Key ps_key = krs[server].begin() + key;
+        CHECK_LT(ps_key, krs[server].end());
+        pskv.keys.push_back(ps_key);
+        pskv.lens.push_back(size);
+        pskv.size = size;
+      } else {
+        // parition it to all servers
+        pskv.size = 0;
+        for (int i = 0; i < num_servers; ++i) {
+          size_t part_size =
+            static_cast<size_t>(round(static_cast<double>(size)/num_servers*(i+1))) -
+            static_cast<size_t>(round(static_cast<double>(size)/num_servers*i));
+          ps::Key ps_key = krs[i].begin() + key;
+          CHECK_LT(ps_key, krs[i].end());
+          pskv.keys.push_back(ps_key);
+          pskv.lens.push_back(part_size);
+          pskv.size += part_size;
+        }
+        CHECK_EQ(static_cast<size_t>(pskv.size), size);
+      }
     }
     return pskv;
   }

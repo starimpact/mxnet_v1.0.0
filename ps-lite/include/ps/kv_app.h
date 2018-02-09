@@ -385,6 +385,7 @@ void KVServer<Val>::Process(const Message& msg) {
   meta.push      = msg.meta.push;
   meta.sender    = msg.meta.sender;
   meta.timestamp = msg.meta.timestamp;
+  meta.body      = msg.meta.body;
   KVPairs<Val> data;
   int n = msg.data.size();
   if (n) {

@@ -83,6 +83,15 @@ def _updater_wrapper(updater):
         updater(key, lhs, rhs)
     return updater_handle
 
+def _kvspecialer_wrapper(kvspecialer):
+  """A wrapper for the user-defined kvspecial functions."""
+  def kvspecialer_handle(key, in_handle_list, in_num, out_handle, kvtype):
+    out = NDArray(NDArrayHandle(out_handle))
+    inlist = []
+    for i in xrange(in_num):
+      inlist.append(NDArray(NDArrayHandle(in_handle_list[i])))
+    kvspecialer(key, inlist, out, kvtype)
+  return kvspecialer_handle
 
 class KVStore(object):
     """A key-value store for synchronization of values, over multiple devices."""
@@ -461,6 +470,22 @@ class KVStore(object):
         else:
             self._set_updater(opt.get_updater(optimizer))
 
+    def set_kvspecial(self, kvspecial):
+        is_worker = ctypes.c_int()
+        check_call(_LIB.MXKVStoreIsWorkerNode(ctypes.byref(is_worker)))
+
+        # pylint: disable=invalid-name
+        if 'dist' in self.type and is_worker.value:
+            # send the optimizer to server
+            try:
+                # use ASCII protocol 0, might be slower, but not a big ideal
+                optim_str = pickle.dumps(kvspecial, 0)
+            except:
+                raise
+            self._send_command_to_servers(8, optim_str)
+        else:
+            self._set_kvspecial(kvspecial)
+
     @property
     def type(self):
         """ Returns the type of this kvstore.
@@ -566,6 +591,15 @@ class KVStore(object):
         self._str_updater_func = _str_updater_proto(_updater_wrapper(updater))
         check_call(_LIB.MXKVStoreSetUpdaterEx(self.handle, self._updater_func,
                                               self._str_updater_func, None))
+
+
+    def _set_kvspecialer(self, kvspecialer):
+        self._kvspecialer = kvspecialer
+        # set updater with int keys
+        _kvspecialer_proto = ctypes.CFUNCTYPE(
+            None, ctypes.c_int, ctypes.POINTER(NDArrayHandle), ctypes.c_int, NDArrayHandle, ctypes.c_char_p)
+        self._kvspecialer_func = _kvspecialer_proto(_kvspecialer_wrapper(kvspecialer))
+        check_call(_LIB.MXKVStoreSetKVSpecialer(self.handle, self._kvspecialer_func, None))
 
 
     def _barrier(self):

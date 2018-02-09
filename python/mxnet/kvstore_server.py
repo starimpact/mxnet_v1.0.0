@@ -56,6 +56,12 @@ class KVStoreServer(object):
                 except:
                     raise
                 self.kvstore.set_optimizer(optimizer)
+            elif cmd_id == 8:
+                try:
+                    kvspecialer = pickle.loads(cmd_body)
+                except:
+                    raise
+                self.kvstore.set_kvspecialer(kvspecialer)
             else:
                 print("server %d, unknown command (%d, %s)" % (
                     self.kvstore.rank, cmd_id, cmd_body))

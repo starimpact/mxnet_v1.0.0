@@ -216,6 +216,8 @@ class KVStore {
    * \brief the prototype of user-defined updater with string keys
    */
   typedef std::function<void(const std::string&, const NDArray&, NDArray*)> StrUpdater;
+
+  typedef std::function<void(int, const std::vector<NDArray>&, NDArray*, std::string strType)> KVSpecialer;
   /*!
    * \brief set an updater
    *
@@ -241,6 +243,11 @@ class KVStore {
   virtual void set_updater(const StrUpdater& updater) {
     CHECK(updater) << "invalid updater";
     str_updater_ = updater;
+  }
+
+  virtual void set_kvspecialer(const KVSpecialer& kvspecialer) {
+    CHECK(updater) << "invalid updater";
+    kvspecialer_ = kvspecialer;
   }
 
   /******************************************************
@@ -391,6 +398,8 @@ class KVStore {
    * \brief the user-defined updater with string keys
    */
   StrUpdater str_updater_;
+
+  KVSpecialer kvspecialer_;
 
   /**
    * \brief the kvstore type

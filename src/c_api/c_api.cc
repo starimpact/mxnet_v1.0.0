@@ -898,6 +898,35 @@ int MXKVStorePullRowSparseEx(KVStoreHandle handle,
   API_END();
 }
 
+void MXKVStoreSetKVSpecialerImpl(KVStoreHandle handle,
+                             MXKVStoreKVSpecialer kvspecialer,
+                             void* kvspecial_handle) {
+  MXKVStoreKVSpecialer * kvspecialer_temp = kvspecialer;
+  void* kvspecialer_handle_temp = kvspecialer_handle;
+  std::function<void(int, const std::vector<NDArray>&, NDArray*, std::string strType)> kvspecialer_func 
+  = [kvspecialer_temp, kvspecialer_handle_temp](int key, const std::vector<NDArray>& recv, NDArray* local, std::string strType) {
+    int in_num = recv.size();
+    NDArrayHandle* in_copy = new NDArrayHandle[in_num];
+    for (int i = 0; i < in_num; i++) {
+      in_copy[i] = new NDArray();
+      *((NDArray*)in_copy[i]) = (*recv)[i];
+    }
+    NDArray* local_copy = new NDArray();
+    *local_copy = *local;
+    kvspecialer_temp(key, in_copy, in_num, local_copy, strType.c_str(), kvspecialer_handle_temp);
+    delete []in_copy;
+  };
+  static_cast<KVStore*>(handle)->set_kvspecialer(kvspecialer_func);
+}
+
+int MXKVStoreSetKVSpecialer(KVStoreHandle handle,
+                        MXKVStoreKVSpecialer kvspecialer,
+                        void* kvspecialer_handle) {
+  API_BEGIN();
+  MXKVStoreSetKVSpecialerImpl(handle, kvspecialer, kvspecialer_handle);
+  API_END();
+}
+
 void MXKVStoreSetUpdaterImpl(KVStoreHandle handle,
                              MXKVStoreUpdater updater,
                              void* updater_handle) {

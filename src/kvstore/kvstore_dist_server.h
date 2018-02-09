@@ -138,6 +138,11 @@ class KVStoreDistServer {
     updater_ = updater;
   }
 
+  void set_kvspecialer(const KVStore::KVSpecialer& kvspecialer)  {
+    CHECK(kvspecialer);
+    kvspecialer_ = kvspecialer;
+  }
+
   /**
    * \brief blocked until received the command \a kSyncMode
    */
@@ -519,6 +524,7 @@ class KVStoreDistServer {
   bool sync_mode_;
   KVStore::Controller controller_;
   KVStore::Updater updater_;
+  KVStore::KVSpecialer kvspecialer_;
 
   /**
    * \brief store_ contains the value at kvstore for each key

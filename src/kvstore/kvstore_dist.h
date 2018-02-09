@@ -86,6 +86,15 @@ class KVStoreDist : public KVStoreLocal {
     }
   }
 
+  void set_kvspecialer(const KVSpecialer& kvspecialer) override {
+    CHECK(kvspecialer) << "invalid updater";
+    if (IsServerNode()) {
+      CHECK_NOTNULL(server_)->set_kvspecialer(kvspecialer);
+    } else {
+      kvspecialer_ = kvspecialer;
+    }
+  }
+
   void SetGradientCompression(const std::vector<std::pair<std::string, std::string> >
                               & kwargs) override {
     KVStoreLocal::SetGradientCompression(kwargs);

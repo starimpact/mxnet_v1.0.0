@@ -1695,6 +1695,12 @@ typedef void (MXKVStoreUpdater)(int key,
                                 NDArrayHandle recv,
                                 NDArrayHandle local,
                                 void *handle);
+
+typedef void (MXKVStoreKVSpecialer)(int key,
+                                NDArrayHandle *pin,
+                                int in_num,
+                                NDArrayHandle out,
+                                char *pType);
 /*!
  * \brief user-defined updater for the kvstore with string keys
  * It's this updater's responsibility to delete \a recv and \a local
@@ -1717,6 +1723,10 @@ typedef void (MXKVStoreStrUpdater)(const char* key,
 MXNET_DLL int MXKVStoreSetUpdater(KVStoreHandle handle,
                                   MXKVStoreUpdater updater,
                                   void *updater_handle);
+
+MXNET_DLL int MXKVStoreSetKVSpecialer(KVStoreHandle handle,
+                                  MXKVStoreKVSpecialer kvspecialer,
+                                  void *kvspecialer_handle);
 /*!
  * \brief register a push updater with int keys and one with string keys
  * \param handle handle to the KVStore

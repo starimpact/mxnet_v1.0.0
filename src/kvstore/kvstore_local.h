@@ -103,11 +103,27 @@ class KVStoreLocal : public KVStore {
     PushImpl(keys, values, priority);
   }
 
+  void Push_KVSpecial(const std::vector<int>& keys,
+            const std::vector<NDArray>& values,
+            const std::string strType,
+            int priority) override {
+    SetKeyType(kIntKey);
+    Push_KVSPecial_(keys, values, strType, priority);
+  }
+
   void Pull(const std::vector<int>& keys,
             const std::vector<NDArray*>& values,
             int priority) override {
     SetKeyType(kIntKey);
     PullImpl(keys, values, priority);
+  }
+
+  void Pull_KVSpecial(const std::vector<int>& keys,
+            const std::vector<NDArray*>& values,
+            const std::string strType,
+            int priority) override {
+    SetKeyType(kIntKey);
+    Pull_KVSpecial_(keys, values, strType, priority);
   }
 
   void PullRowSparse(const std::vector<int>& keys,

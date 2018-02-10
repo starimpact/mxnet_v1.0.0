@@ -329,6 +329,62 @@ class KVStoreDist : public KVStoreLocal {
     }
   }
 
+  void Pull_KVSpecial_(const std::vector<int>& keys,
+                const std::vector<NDArray*>& values,
+                const std::string strType,
+                int priority) override {
+    std::vector<int> uniq_keys;
+    std::vector<std::vector<NDArray*> > grouped_vals;
+    GroupKVPairsPull(keys, values, &uniq_keys, &grouped_vals);
+
+    for (size_t i = 0; i < uniq_keys.size(); ++i) {
+      int key = uniq_keys[i];
+      // use the same array for merging to guarantee that pull always happens
+      // after the previous push on this key
+      auto& recv_buf = comm_buf_[key];
+      const auto storage_type = grouped_vals[i][0]->storage_type();
+      CHECK_EQ(storage_type, kDefaultStorage)
+               << "Expected stype of value to be kDefaultStorage";
+      if (recv_buf.is_none()) {
+        // it may happen for the first time a no-rank-0 worker pull the weight.
+        recv_buf = NDArray(grouped_vals[i][0]->shape(), pinned_ctx_,
+                           true, grouped_vals[i][0]->dtype());
+      }
+      auto pull_from_servers = [this, key, recv_buf](
+          RunContext rctx, Engine::CallbackOnComplete cb) {
+        // convert to ps keys
+        size_t size = recv_buf.shape().Size();
+
+        PSKV& pskv = (gradient_compression_->get_type() == CompressionType::kNone) ?
+                      EncodeDefaultKey(key, size, false) :
+                      EncodeCompressedKey(key, size, false);
+#if MKL_EXPERIMENTAL == 1
+        mkl_set_tblob_eager_mode(recv_buf.data());
+#endif
+        real_t* data = recv_buf.data().dptr<real_t>();
+        // false means not to delete data when SArray is deleted
+        auto vals = new ps::SArray<real_t>(data, size, false);
+        // issue pull
+        int cmd = static_cast<int>(DataHandleType::kKVSpecialPushPull);
+        CHECK_NOTNULL(ps_worker_)->ZPull_KVSpecial(
+          pskv.keys, vals, &pskv.lens, strType, cmd, [vals, cb](){ delete vals; cb(); });
+      };
+
+      CHECK_NOTNULL(Engine::Get())->PushAsync(
+          pull_from_servers,
+          pinned_ctx_,
+          {},
+          {recv_buf.var()},
+          FnProperty::kNormal,
+          priority,
+          PROFILER_MESSAGE("KVStoreDistKVSpecialPull"));
+
+      comm_->Broadcast(key, recv_buf, grouped_vals[i], priority);
+    }
+  }
+
+
+
   void Push_(const std::vector<int>& keys,
              const std::vector<NDArray>& values,
              int priority,

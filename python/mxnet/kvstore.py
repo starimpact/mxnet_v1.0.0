@@ -235,6 +235,11 @@ class KVStore(object):
             check_call(_LIB.MXKVStorePush(
                 self.handle, mx_uint(len(ckeys)), ckeys, cvals, ctypes.c_int(priority)))
 
+    def push_kvspecial(self, key, value, stype, priority=0):
+        ckeys, cvals, use_str_keys = _ctype_key_value(key, value)
+        check_call(_LIB.MXKVStorePush_KVSpecial(
+            self.handle, mx_uint(len(ckeys)), ckeys, cvals, ctypes.c_char_p(stype), ctypes.c_int(priority)))
+
 
     def pull(self, key, out=None, priority=0):
         """ Pulls a single value or a sequence of values from the store.
@@ -304,6 +309,11 @@ class KVStore(object):
         else:
             check_call(_LIB.MXKVStorePull(
                 self.handle, mx_uint(len(ckeys)), ckeys, cvals, ctypes.c_int(priority)))
+
+    def pull_kvspecial(self, key, out=None, stype, priority=0):
+        ckeys, cvals, use_str_keys = _ctype_key_value(key, out)
+            check_call(_LIB.MXKVStorePull_KVSpecial(
+                self.handle, mx_uint(len(ckeys)), ckeys, cvals, ctypes.c_char_p(stype), ctypes.c_int(priority)))
 
     def row_sparse_pull(self, key, out=None, priority=0, row_ids=None):
         """ Pulls a single RowSparseNDArray value or a sequence of RowSparseNDArray values \
@@ -470,7 +480,7 @@ class KVStore(object):
         else:
             self._set_updater(opt.get_updater(optimizer))
 
-    def set_kvspecial(self, kvspecial):
+    def set_kvspecialer(self, kvspecialer):
         is_worker = ctypes.c_int()
         check_call(_LIB.MXKVStoreIsWorkerNode(ctypes.byref(is_worker)))
 
@@ -479,12 +489,12 @@ class KVStore(object):
             # send the optimizer to server
             try:
                 # use ASCII protocol 0, might be slower, but not a big ideal
-                optim_str = pickle.dumps(kvspecial, 0)
+                optim_str = pickle.dumps(kvspecialer, 0)
             except:
                 raise
             self._send_command_to_servers(8, optim_str)
         else:
-            self._set_kvspecial(kvspecial)
+            self._set_kvspecialer(kvspecialer)
 
     @property
     def type(self):

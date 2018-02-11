@@ -1603,6 +1603,13 @@ MXNET_DLL int MXKVStorePush(KVStoreHandle handle,
                             const int* keys,
                             NDArrayHandle* vals,
                             int priority);
+
+MXNET_DLL int MXKVStorePush_KVSpecial(KVStoreHandle handle,
+                            mx_uint num,
+                            const int* keys,
+                            NDArrayHandle* vals,
+                            const char* pstrType,
+                            int priority);
 /*!
  * \brief Push a list of (key,value) pairs to kvstore, where each key is a string
  * \param handle handle to the kvstore
@@ -1630,6 +1637,13 @@ MXNET_DLL int MXKVStorePull(KVStoreHandle handle,
                             mx_uint num,
                             const int* keys,
                             NDArrayHandle* vals,
+                            int priority);
+
+MXNET_DLL int MXKVStorePull_KVSpecial(KVStoreHandle handle,
+                            mx_uint num,
+                            const int* keys,
+                            NDArrayHandle* vals,
+                            const char* pstrType,
                             int priority);
 /*!
  * \brief pull a list of (key, value) pairs from the kvstore, where each key is a string

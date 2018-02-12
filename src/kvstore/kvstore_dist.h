@@ -156,6 +156,7 @@ class KVStoreDist : public KVStoreLocal {
   struct PSKV {
     ps::SArray<ps::Key> keys;  // n keys
     ps::SArray<int> lens;  // the length of the i-th value
+    ps::SArray<int> dims;  // the dimention value
     int size;
   };
 
@@ -355,9 +356,7 @@ class KVStoreDist : public KVStoreLocal {
         // convert to ps keys
         size_t size = recv_buf.shape().Size();
 
-        PSKV& pskv = (gradient_compression_->get_type() == CompressionType::kNone) ?
-                      EncodeDefaultKey(key, size, false) :
-                      EncodeCompressedKey(key, size, false);
+        PSKV& pskv = EncodeKVSpecialKey(key, size, false) :
 #if MKL_EXPERIMENTAL == 1
         mkl_set_tblob_eager_mode(recv_buf.data());
 #endif
@@ -367,7 +366,7 @@ class KVStoreDist : public KVStoreLocal {
         // issue pull
         int cmd = static_cast<int>(DataHandleType::kKVSpecialPushPull);
         CHECK_NOTNULL(ps_worker_)->ZPull_KVSpecial(
-          pskv.keys, vals, &pskv.lens, strType, cmd, [vals, cb](){ delete vals; cb(); });
+          pskv.keys, vals, &pskv.lens, pskv.dims, strType, cmd, [vals, cb](){ delete vals; cb(); });
       };
 
       CHECK_NOTNULL(Engine::Get())->PushAsync(
@@ -584,7 +583,8 @@ class KVStoreDist : public KVStoreLocal {
 
       // push to servers
       if (storage_type == kDefaultStorage) {
-        PSKV& pskv = EncodeKVSpecialKey(key, comm_buf.shape().Size(), strType, true);
+        TShape shape2d = comm_buf.shape().FlatTo2D();
+        PSKV& pskv = EncodeKVSpecialKey(key, shape2d, strType, true);
         PushKVSpecial(key, comm_buf, pskv, strType, priority);
       } else {
         LOG(FATAL) << "unknown storage type";
@@ -605,7 +605,7 @@ class KVStoreDist : public KVStoreLocal {
           // do push. false means no delete
           ps::SArray<real_t> vals(data, size, false);
           CHECK_NOTNULL(ps_worker_)->ZPush_KVSpecial(
-              pskv.keys, vals, pskv.lens, strType,
+              pskv.keys, vals, pskv.lens, pskv.dims, strType,
               static_cast<int>(DataHandleType::kKVSpecialPushPull), [cb]() { cb(); });
         };
     Engine::Get()->PushAsync(
@@ -864,37 +864,42 @@ class KVStoreDist : public KVStoreLocal {
     return pskv;
   }
 
-  inline PSKV& EncodeKVSpecialKey(int key, size_t size, std::string strType, bool is_push) {
+  inline PSKV& EncodeKVSpecialKey(int key, TShape &shape2d, std::string strType, bool is_push) {
     mu_.lock();
     PSKV& pskv = ps_kv_[key];
     mu_.unlock();
+    size_t size = shape.Size();
     if (!pskv.keys.empty()) {
       CHECK_EQ(static_cast<size_t>(pskv.size), size) << "The value size cannot be changed";
     } else {
+      //recorde shape
       auto krs = ps::Postoffice::Get()->GetServerKeyRanges();
       int num_servers = krs.size();
       CHECK_GT(num_servers, 0);
 
       // a simple heuristic for load balance
-      if (size < bigarray_bound_) {
+      if (size < bigarray_bound_ || strType.find("alone")!=std::string::npos) {
         // send it to a single random picked server
         int server = (key * 9973) % num_servers;
         ps::Key ps_key = krs[server].begin() + key;
         CHECK_LT(ps_key, krs[server].end());
         pskv.keys.push_back(ps_key);
         pskv.lens.push_back(size);
+        pskv.dims.push_back(shape2d[1]);
         pskv.size = size;
       } else {
         // parition it to all servers
         pskv.size = 0;
         for (int i = 0; i < num_servers; ++i) {
+          rows = shape2d[0]; 
           size_t part_size =
-            static_cast<size_t>(round(static_cast<double>(size)/num_servers*(i+1))) -
-            static_cast<size_t>(round(static_cast<double>(size)/num_servers*i));
+            static_cast<size_t>(round(static_cast<double>(rows)/num_servers*(i+1))) -
+            static_cast<size_t>(round(static_cast<double>(rows)/num_servers*i));
           ps::Key ps_key = krs[i].begin() + key;
           CHECK_LT(ps_key, krs[i].end());
           pskv.keys.push_back(ps_key);
-          pskv.lens.push_back(part_size);
+          pskv.lens.push_back(part_size * shape2d[1]);
+          pskv.dims.push_back(shape2d[1]);
           pskv.size += part_size;
         }
         CHECK_EQ(static_cast<size_t>(pskv.size), size);

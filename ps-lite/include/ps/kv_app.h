@@ -39,6 +39,8 @@ struct KVPairs {
   SArray<Val> vals;
   /** \brief the according value lengths (could be empty) */
   SArray<int> lens;
+ 
+  SArray<int> dims;
 };
 
 /**
@@ -190,7 +192,8 @@ class KVWorker : public SimpleApp {
   int ZPush_KVSpecial(const SArray<Key>& keys,
             const SArray<Val>& vals,
             const SArray<int>& lens = {},
-            const std::string strType,
+            const SArray<int>& dims = {},
+            const std::string strType = "",
             int cmd = 0,
             const Callback& cb = nullptr) {
     int ts = obj_->NewRequest(kServerGroup);
@@ -199,6 +202,7 @@ class KVWorker : public SimpleApp {
     kvs.keys = keys;
     kvs.vals = vals;
     kvs.lens = lens;
+    kvs.dims = dims;
     Send_KVSpecial(ts, true, cmd, strType, kvs);
     return ts;
   }
@@ -223,10 +227,11 @@ class KVWorker : public SimpleApp {
   int ZPull_KVSpecial(const SArray<Key>& keys,
             SArray<Val>* vals,
             SArray<int>* lens = nullptr,
-            const std::string strType,
+            SArray<int>* dims = nullptr,
+            const std::string strType = "",
             int cmd = 0,
             const Callback& cb = nullptr) {
-    return Pull_KVSpecial_(keys, vals, lens, strType, cmd, cb);
+    return Pull_KVSpecial_(keys, vals, lens, dims, strType, cmd, cb);
   }
 
   using SlicedKVs = std::vector<std::pair<bool, KVPairs<Val>>>;
@@ -310,6 +315,8 @@ struct KVMeta {
   int sender;
   /** \brief the associated timestamp */
   int timestamp;
+  /** \brief type for kvspecial */
+  std::string type;
 };
 
 /**
@@ -399,7 +406,7 @@ void KVServer<Val>::Process(const Message& msg) {
   meta.push      = msg.meta.push;
   meta.sender    = msg.meta.sender;
   meta.timestamp = msg.meta.timestamp;
-  meta.body      = msg.meta.body;
+  meta.type      = msg.meta.body;
   KVPairs<Val> data;
   int n = msg.data.size();
   if (n) {
@@ -407,9 +414,13 @@ void KVServer<Val>::Process(const Message& msg) {
     data.keys = msg.data[0];
     data.vals = msg.data[1];
     if (n > 2) {
-      CHECK_EQ(n, 3);
+//      CHECK_EQ(n, 3);
       data.lens = msg.data[2];
       CHECK_EQ(data.lens.size(), data.keys.size());
+      if (n > 3) {
+        data.dims = msg.data[3];
+        CHECK_EQ(data.dims.size(), data.keys.size());
+      }
     }
   }
   CHECK(request_handle_);
@@ -531,7 +542,8 @@ void KVWorker<Val>::Send(int timestamp, bool push, int cmd, const KVPairs<Val>& 
 }
 
 
-void KVWorker<Val>::Send_KVSpecial(int timestamp, bool push, int cmd, std::string strType, const KVPairs<Val>& kvs) {
+void KVWorker<Val>::Send_KVSpecial(int timestamp, bool push, int cmd, 
+                                   std::string strType, const KVPairs<Val>& kvs) {
   // slice the message
   SlicedKVs sliced;
   slicer_(kvs, Postoffice::Get()->GetServerKeyRanges(), &sliced);
@@ -563,6 +575,9 @@ void KVWorker<Val>::Send_KVSpecial(int timestamp, bool push, int cmd, std::strin
       msg.AddData(kvs.vals);
       if (kvs.lens.size()) {
         msg.AddData(kvs.lens);
+      }
+      if (kvs.dims.size()) {
+        msg.AddData(kvs.dims);
       }
     }
     Postoffice::Get()->van()->Send(msg);
@@ -678,9 +693,9 @@ int KVWorker<Val>::Pull_(
 template <typename Val>
 template <typename C, typename D>
 int KVWorker<Val>::Pull_KVSpecial_(
-    const SArray<Key>& keys, C* vals, D* lens, const std::string strType, int cmd, const Callback& cb) {
+    const SArray<Key>& keys, C* vals, D* lens, D* dims, const std::string strType, int cmd, const Callback& cb) {
   int ts = obj_->NewRequest(kServerGroup);
-  AddCallback(ts, [this, ts, keys, vals, lens, strType, cb]() mutable {
+  AddCallback(ts, [this, ts, keys, vals, lens, dims, strType, cb]() mutable {
       mu_.lock();
       auto& kvs = recv_kvs_[ts];
       mu_.unlock();

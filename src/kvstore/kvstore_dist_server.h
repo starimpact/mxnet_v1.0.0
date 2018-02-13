@@ -519,6 +519,7 @@ class KVStoreDistServer {
                          const ps::KVPairs<real_t> &req_data,
                          ps::KVServer<real_t>* server) {
     CHECK_EQ(req_meta.cmd, static_cast<int>(DataHandleType::kKVSpecialPushPull));
+    int worker_rank = ps::Postoffice::IDtoRank(req_meta.customer_id);
     std::string strType = req_meta.type;
     // do some check
     CHECK_EQ(req_data.keys.size(), (size_t)1);
@@ -536,49 +537,77 @@ class KVStoreDistServer {
 
     int key = DecodeKey(req_data.keys[0]);
     auto& stored = store_[key];
+    auto& stored_list = store_list_[key];
+    if (stored_list.size() != 0) {
+      CHECK_EQ(stored_list.size(), worker_num) << "store_list size for " 
+                        << key << " is not workernumber:" << woker_num;
+      stored_list.resize(worker_num);
+    }
 
     // there used several WaitToRead, this is because \a recved's memory
     // could be deallocated when this function returns. so we need to make sure
     // the operators with \a NDArray are actually finished
     if (req_meta.push) {
-      size_t ds[] = {(size_t)req_data.lens[0]};
-      TShape dshape(ds, ds + 1);
+      int dim = req_data.dims[0];
+      CHECK_EQ(req_data.lens[0]%dim, 0);
+      TShape dshape(2), dshape_src(2); //initial shape
+      dshape[0] = req_data.lens[0] / dim;
+      dshape[1] = dim;
+      dshape_src = dshape;
       if (strType.find("concat") != std::string::npos) {
         dshape[0] *= worker_num;
       } else if (strType.find("reduce") != std::string::npos) {
-        
+        //keep the intial shape
       }
       TBlob recv_blob((real_t*)req_data.vals.data(), // NOLINT(*)
                       dshape, cpu::kDevMask);
       NDArray recved = NDArray(recv_blob, 0);
-      if (stored.is_none()) {
-        // initialization
-//        if (merged->request.size() == (size_t) ps::NumWorkers()) {
-//        }
+      auto& stored_src = stored_list[worker_rank];
 
-        stored = NDArray(dshape, Context());
-        CopyFromTo(recved, &stored, 0);
-        server->Response(req_meta);
-        stored.WaitToRead();
+      auto& merged = merge_buf_[key];
+      merged.request.push_back(req_meta);
+
+      if (stored_src.is_none()) {
+        stored_src = NDArray(dshape_src, Context());
+      } else {
+        CopyFromTo(recved, stored_src);
+      }
+
+      if (stored.is_none()) {
+        if (merged.request.size() == worker_num) {
+          stored = NDArray(dshape, Context());
+          for (const auto& req : merged.request) {
+             server->Response(req);
+          }
+          merged.reques.clear();
+        }
       } else if (sync_mode_) {
         // synced push
-        auto& merged = merge_buf_[key];
-        if (merged.array.is_none()) {
-          merged.array = NDArray(dshape, Context());
+        if (merged.request.size() == worker_num) {
+          if (kvspecialer_) {
+            exec_.Exec([this, key, stored_list, stored, strType](){
+              CHECK(kvspecialer_);
+              kvspecialer_(key, stored_list, &stored, strType);
+            });
+          }
+          stored->WaitToRead();
+          for (const auto& req : merged.request) {
+             server->Response(req);
+          }
+          merged.reques.clear();
         }
-        if (merged.request.size() == 0) {
-          CopyFromTo(recved, &merged.array, 0);
-        } else {
-          merged.array += recved;
-        }
-        merged.request.push_back(req_meta);
-        ApplyUpdates(key, &merged, &stored, server);
       } else {
         // async push
         LOG(FATAL) << "KVSpecial doesn't support async process.";
       }
     } else {
-//      DefaultStorageResponse(key, stored, req_meta, req_data, server);
+      ps::KVPairs<real_t> response;
+      CHECK(!stored.is_none()) << "init " << key << " first";
+      auto len = stored.shape().Size();
+      response.keys = req_data.keys;
+      response.lens = {len};
+      response.vals.CopyFrom(static_cast<const float*>(stored.data().dptr_), len);
+      server->Response(req_meta, response);
     }
   }
 
@@ -601,6 +630,8 @@ class KVStoreDistServer {
    * \brief store_ contains the value at kvstore for each key
    */
   std::unordered_map<int, NDArray> store_;
+
+  std::unordered_map<int, std::vector<NDArray>> store_list_;
 
   /**
    * \brief merge_buf_ is a buffer used if sync_mode is true. It represents

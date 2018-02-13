@@ -946,7 +946,7 @@ void MXKVStoreSetKVSpecialerImpl(KVStoreHandle handle,
     NDArrayHandle* in_copy = new NDArrayHandle[in_num];
     for (int i = 0; i < in_num; i++) {
       in_copy[i] = new NDArray();
-      *((NDArray*)in_copy[i]) = (*recv)[i];
+      *((NDArray*)in_copy[i]) = recv[i];
     }
     NDArray* local_copy = new NDArray();
     *local_copy = *local;

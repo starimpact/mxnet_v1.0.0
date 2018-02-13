@@ -236,6 +236,12 @@ class KVStore(object):
                 self.handle, mx_uint(len(ckeys)), ckeys, cvals, ctypes.c_int(priority)))
 
     def push_kvspecial(self, key, value, stype, priority=0):
+        """
+        stype:
+             _alone_ means only push to one server
+             _concat_ means do concat on server, will generate a bigger array.
+             _reduce_ means do reduce on server, will generate a same size array.
+        """
         ckeys, cvals, use_str_keys = _ctype_key_value(key, value)
         check_call(_LIB.MXKVStorePush_KVSpecial(
             self.handle, mx_uint(len(ckeys)), ckeys, cvals, ctypes.c_char_p(stype), ctypes.c_int(priority)))
@@ -311,6 +317,10 @@ class KVStore(object):
                 self.handle, mx_uint(len(ckeys)), ckeys, cvals, ctypes.c_int(priority)))
 
     def pull_kvspecial(self, key, out=None, stype, priority=0):
+        """
+        stype shoud be same to the pre push_kvspecial.
+        out size is need to be adapted with stype, such as 'concnat' and 'reduce'.
+        """
         ckeys, cvals, use_str_keys = _ctype_key_value(key, out)
             check_call(_LIB.MXKVStorePull_KVSpecial(
                 self.handle, mx_uint(len(ckeys)), ckeys, cvals, ctypes.c_char_p(stype), ctypes.c_int(priority)))

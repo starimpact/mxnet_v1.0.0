@@ -91,7 +91,7 @@ class KVStoreLocal : public KVStore {
   }
 
   void Init_KVSpecial(const std::vector<int>& keys,
-            const std::vector<NDArray>& values, const std::string strType) {
+            const std::vector<NDArray>& values, const std::string strType) override {
     SetKeyType(kIntKey);
     InitImpl_KVSpecial(keys, values, strType);
   }

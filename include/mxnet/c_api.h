@@ -1576,6 +1576,11 @@ MXNET_DLL int MXKVStoreInit(KVStoreHandle handle,
                             const int* keys,
                             NDArrayHandle* vals);
 
+MXNET_DLL int MXKVStoreInit_KVSpecial(KVStoreHandle handle,
+                            mx_uint num,
+                            const int* keys,
+                            NDArrayHandle* vals,
+                            const char* pstrType);
 /*!
  * \brief Init a list of (key,value) pairs in kvstore, where each key is a string
  * \param handle handle to the kvstore

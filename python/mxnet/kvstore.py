@@ -156,6 +156,17 @@ class KVStore(object):
         else:
             check_call(_LIB.MXKVStoreInit(self.handle, mx_uint(len(ckeys)), ckeys, cvals))
 
+    def init_kvspecial(self, key, value, stype):
+        """
+        stype:
+             _alone_ means only push to one server
+             _concat_ means do concat on server, will generate a bigger array.
+             _reduce_ means do reduce on server, will generate a same size array.
+        """
+        ckeys, cvals, use_str_keys = _ctype_key_value(key, value)
+        check_call(_LIB.MXKVStoreInit(self.handle, mx_uint(len(ckeys)), ckeys, cvals, ctypes.c_char_p(stype)))
+        
+
     def push(self, key, value, priority=0):
         """ Pushes a single or a sequence of key-value pairs into the store.
 

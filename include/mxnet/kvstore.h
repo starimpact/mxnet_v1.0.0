@@ -99,6 +99,9 @@ class KVStore {
    */
   virtual void Init(const std::vector<std::string>& str_keys,
                     const std::vector<NDArray>& values) = 0;
+
+  virtual void Init_KVSpecial(const std::vector<int>& keys,
+            const std::vector<NDArray>& values, const std::string strType) = 0; 
   /*!
    * \brief push a list of key-value pairs into the store
    *

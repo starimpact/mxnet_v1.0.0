@@ -262,7 +262,7 @@ class KVWorker : public SimpleApp {
             int cmd, const Callback& cb);
 
   template <typename C, typename D>
-  int Pull_KVSpecial_(const SArray<Key>& keys, C* vals, D* lens,
+  int Pull_KVSpecial_(const SArray<Key>& keys, C* vals, D* lens, D* dims,
             const std::string strType, int cmd, const Callback& cb);
   /**
    * \brief add a callback for a request. threadsafe.
@@ -542,6 +542,7 @@ void KVWorker<Val>::Send(int timestamp, bool push, int cmd, const KVPairs<Val>& 
 }
 
 
+template <typename Val>
 void KVWorker<Val>::Send_KVSpecial(int timestamp, bool push, int cmd, 
                                    std::string strType, const KVPairs<Val>& kvs) {
   // slice the message
@@ -749,7 +750,7 @@ int KVWorker<Val>::Pull_KVSpecial_(
     });
 
   KVPairs<Val> kvs; kvs.keys = keys;
-  Send_KVSpecial(ts, false, cmd, kvs);
+  Send_KVSpecial(ts, false, cmd, strType, kvs);
   return ts;
 }
 

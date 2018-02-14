@@ -144,7 +144,7 @@ endif
 #----------------------------
 
 # whether or not to enable multi-machine supporting
-USE_DIST_KVSTORE = 0
+USE_DIST_KVSTORE = 1
 
 # whether or not allow to read and write HDFS directly. If yes, then hadoop is
 # required

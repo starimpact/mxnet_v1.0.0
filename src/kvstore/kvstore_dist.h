@@ -217,8 +217,6 @@ class KVStoreDist : public KVStoreLocal {
         comm_buf_[key].WaitToWrite();
         compr_buf_[key].WaitToWrite();
       }
-    } else {
-      // do nothing
     }
     if (!ps::Postoffice::Get()->is_recovery()) {
       Barrier();
@@ -351,12 +349,13 @@ class KVStoreDist : public KVStoreLocal {
         recv_buf = NDArray(grouped_vals[i][0]->shape(), pinned_ctx_,
                            true, grouped_vals[i][0]->dtype());
       }
-      auto pull_from_servers = [this, key, recv_buf](
+      auto pull_from_servers = [this, key, recv_buf, strType](
           RunContext rctx, Engine::CallbackOnComplete cb) {
         // convert to ps keys
-        size_t size = recv_buf.shape().Size();
+        TShape shape2d = recv_buf.shape();
+        size_t size = shape2d.Size();
 
-        PSKV& pskv = EncodeKVSpecialKey(key, size, false) :
+        PSKV& pskv = EncodeKVSpecialKey(key, shape2d, strType, false);
 #if MKL_EXPERIMENTAL == 1
         mkl_set_tblob_eager_mode(recv_buf.data());
 #endif
@@ -366,7 +365,7 @@ class KVStoreDist : public KVStoreLocal {
         // issue pull
         int cmd = static_cast<int>(DataHandleType::kKVSpecialPushPull);
         CHECK_NOTNULL(ps_worker_)->ZPull_KVSpecial(
-          pskv.keys, vals, &pskv.lens, pskv.dims, strType, cmd, [vals, cb](){ delete vals; cb(); });
+          pskv.keys, vals, &pskv.lens, &pskv.dims, strType, cmd, [vals, cb](){ delete vals; cb(); });
       };
 
       CHECK_NOTNULL(Engine::Get())->PushAsync(
@@ -552,7 +551,7 @@ class KVStoreDist : public KVStoreLocal {
              const std::vector<NDArray>& values,
              const std::string strType,
              int priority,
-             bool do_merge) {
+             bool do_merge) override {
     // first aggregate the values over keys
     std::vector<int> uniq_keys;
     std::vector<std::vector<NDArray> > grouped_vals;
@@ -868,7 +867,7 @@ class KVStoreDist : public KVStoreLocal {
     mu_.lock();
     PSKV& pskv = ps_kv_[key];
     mu_.unlock();
-    size_t size = shape.Size();
+    size_t size = shape2d.Size();
     if (!pskv.keys.empty()) {
       CHECK_EQ(static_cast<size_t>(pskv.size), size) << "The value size cannot be changed";
     } else {
@@ -891,7 +890,7 @@ class KVStoreDist : public KVStoreLocal {
         // parition it to all servers
         pskv.size = 0;
         for (int i = 0; i < num_servers; ++i) {
-          rows = shape2d[0]; 
+          int rows = shape2d[0]; 
           size_t part_size =
             static_cast<size_t>(round(static_cast<double>(rows)/num_servers*(i+1))) -
             static_cast<size_t>(round(static_cast<double>(rows)/num_servers*i));

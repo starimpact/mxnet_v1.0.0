@@ -519,7 +519,7 @@ class KVStoreDistServer {
                          const ps::KVPairs<real_t> &req_data,
                          ps::KVServer<real_t>* server) {
     CHECK_EQ(req_meta.cmd, static_cast<int>(DataHandleType::kKVSpecialPushPull));
-    int worker_rank = ps::Postoffice::IDtoRank(req_meta.customer_id);
+    int worker_rank = ps::Postoffice::IDtoRank(req_meta.sender);
     std::string strType = req_meta.type;
     // do some check
     CHECK_EQ(req_data.keys.size(), (size_t)1);
@@ -540,7 +540,7 @@ class KVStoreDistServer {
     auto& stored_list = store_list_[key];
     if (stored_list.size() != 0) {
       CHECK_EQ(stored_list.size(), worker_num) << "store_list size for " 
-                        << key << " is not workernumber:" << woker_num;
+                        << key << " is not workernumber:" << worker_num;
       stored_list.resize(worker_num);
     }
 
@@ -579,22 +579,22 @@ class KVStoreDistServer {
           for (const auto& req : merged.request) {
              server->Response(req);
           }
-          merged.reques.clear();
+          merged.request.clear();
         }
       } else if (sync_mode_) {
         // synced push
         if (merged.request.size() == worker_num) {
           if (kvspecialer_) {
-            exec_.Exec([this, key, stored_list, stored, strType](){
+            exec_.Exec([this, key, &stored_list, &stored, strType](){
               CHECK(kvspecialer_);
               kvspecialer_(key, stored_list, &stored, strType);
             });
           }
-          stored->WaitToRead();
+          stored.WaitToRead();
           for (const auto& req : merged.request) {
              server->Response(req);
           }
-          merged.reques.clear();
+          merged.request.clear();
         }
       } else {
         // async push

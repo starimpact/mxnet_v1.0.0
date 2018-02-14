@@ -878,7 +878,7 @@ int MXKVStorePull_KVSpecial(KVStoreHandle handle,
     v_vals[i] = static_cast<NDArray*>(vals[i]);
   }
   std::string strType(pstrType);
-  static_cast<KVStore*>(handle)->Pull_KVSpcial(v_keys, v_vals, strType, priority);
+  static_cast<KVStore*>(handle)->Pull_KVSpecial(v_keys, v_vals, strType, priority);
   API_END();
 }
 
@@ -937,7 +937,7 @@ int MXKVStorePullRowSparseEx(KVStoreHandle handle,
 
 void MXKVStoreSetKVSpecialerImpl(KVStoreHandle handle,
                              MXKVStoreKVSpecialer kvspecialer,
-                             void* kvspecial_handle) {
+                             void* kvspecialer_handle) {
   MXKVStoreKVSpecialer * kvspecialer_temp = kvspecialer;
   void* kvspecialer_handle_temp = kvspecialer_handle;
   std::function<void(int, const std::vector<NDArray>&, NDArray*, std::string strType)> kvspecialer_func 
@@ -950,7 +950,7 @@ void MXKVStoreSetKVSpecialerImpl(KVStoreHandle handle,
     }
     NDArray* local_copy = new NDArray();
     *local_copy = *local;
-    kvspecialer_temp(key, in_copy, in_num, local_copy, strType.c_str(), kvspecialer_handle_temp);
+    kvspecialer_temp(key, in_copy, in_num, local_copy, (char*)strType.c_str());
     delete []in_copy;
   };
   static_cast<KVStore*>(handle)->set_kvspecialer(kvspecialer_func);

@@ -91,7 +91,7 @@ class KVStoreLocal : public KVStore {
   }
 
   void Init_KVSpecial(const std::vector<int>& keys,
-            const std::vector<NDArray>& values, const std::string strType) override {
+            const std::vector<NDArray>& values, const std::string strType) {
     SetKeyType(kIntKey);
     InitImpl_KVSpecial(keys, values, strType);
   }
@@ -103,12 +103,18 @@ class KVStoreLocal : public KVStore {
     PushImpl(keys, values, priority);
   }
 
+  virtual void Push_KVSpecial_(const std::vector<int>& keys,
+            const std::vector<NDArray>& values,
+            const std::string strType,
+            int priority,
+            bool do_merge) {};
+
   void Push_KVSpecial(const std::vector<int>& keys,
             const std::vector<NDArray>& values,
             const std::string strType,
-            int priority) override {
+            int priority) {
     SetKeyType(kIntKey);
-    Push_KVSPecial_(keys, values, strType, priority);
+    Push_KVSpecial_(keys, values, strType, priority, true);
   }
 
   void Pull(const std::vector<int>& keys,
@@ -118,10 +124,15 @@ class KVStoreLocal : public KVStore {
     PullImpl(keys, values, priority);
   }
 
+  virtual void Pull_KVSpecial_(const std::vector<int>& keys,
+            const std::vector<NDArray*>& values,
+            const std::string strType,
+            int priority) {};
+
   void Pull_KVSpecial(const std::vector<int>& keys,
             const std::vector<NDArray*>& values,
             const std::string strType,
-            int priority) override {
+            int priority) {
     SetKeyType(kIntKey);
     Pull_KVSpecial_(keys, values, strType, priority);
   }
@@ -178,7 +189,7 @@ class KVStoreLocal : public KVStore {
   }
 
   virtual void InitImpl_KVSpecial(const std::vector<int>& keys,
-                        const std::vector<NDArray>& values, const std::string strType) = 0;
+                        const std::vector<NDArray>& values, const std::string strType) {};
 
   virtual void PushImpl(const std::vector<int>& keys,
                         const std::vector<NDArray>& values,

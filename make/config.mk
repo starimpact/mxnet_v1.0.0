@@ -47,12 +47,12 @@ ADD_CFLAGS =
 #---------------------------------------------
 
 # whether use CUDA during compile
-USE_CUDA = 0
+USE_CUDA = 1
 
 # add the path to CUDA library to link and compile flag
 # if you have already add them to environment variable, leave it as NONE
-# USE_CUDA_PATH = /usr/local/cuda
-USE_CUDA_PATH = NONE
+USE_CUDA_PATH = /usr/local/cuda
+#USE_CUDA_PATH = NONE
 
 # whether use CuDNN R3 library
 USE_CUDNN = 0
@@ -65,7 +65,7 @@ USE_NCCL_PATH = NONE
 # whether use opencv during compilation
 # you can disable it, however, you will not able to use
 # imbin iterator
-USE_OPENCV = 1
+USE_OPENCV = 0
 
 #whether use libjpeg-turbo for image decode without OpenCV wrapper
 USE_LIBJPEG_TURBO = 0
@@ -175,7 +175,7 @@ USE_JEMALLOC = 1
 #----------------------------
 
 # path to folders containing projects specific operators that you don't want to put in src/operators
-EXTRA_OPERATORS =
+EXTRA_OPERATORS = extra-op
 
 #----------------------------
 # other features

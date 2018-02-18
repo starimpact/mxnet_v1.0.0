@@ -25,14 +25,14 @@ enum TakeOpOutputs {kOut};
 enum TakeOpResource {kTempSpace};
 }  //namespace take_
 
-struct TakeParam__ : public dmlc::Parameter<TakeParam__> {
-  DMLC_DECLARE_PARAMETER(TakeParam__) {}
+struct TakeParam_ : public dmlc::Parameter<TakeParam_> {
+  DMLC_DECLARE_PARAMETER(TakeParam_) {}
 };
 
 template<typename xpu>
 class TakeOp : public Operator {
  public:
-  explicit TakeOp(TakeParam__ p) : param_(p) {}
+  explicit TakeOp(TakeParam_ p) : param_(p) {}
 
   virtual void Forward(const OpContext &ctx,
                        const std::vector<TBlob> &in_data,
@@ -89,11 +89,11 @@ class TakeOp : public Operator {
   }
 
  private:
-  TakeParam__ param_;
+  TakeParam_ param_;
 };  // class TakeOp
 
 template<typename xpu>
-Operator* CreateOp(TakeParam__ param);
+Operator* CreateOp(TakeParam_ param);
 
 
 #if DMLC_USE_CXX11
@@ -165,7 +165,7 @@ class TakeProp : public OperatorProperty {
 
   Operator* CreateOperator(Context ctx) const override;
  private:
-  TakeParam__ param_;
+  TakeParam_ param_;
 };  // class TakeProp
 #endif
 

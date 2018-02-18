@@ -59,5 +59,5 @@ class KVSpecial(object):
     assert shape_0[1]==shape_out[1]
     out[:] = inlist[0]
     for i in xrange(1, in_num):
-      out[:] = mx.nd.maximum(out, inlist[1])
+      out[:] = maximum(out, inlist[1])
     pass

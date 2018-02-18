@@ -698,6 +698,35 @@ struct smooth_l1_gradient {
 };  // struct smooth_l1_derivative
 MSHADOW_OP_DECLARE_TUNABLE_BACKWARD(smooth_l1_gradient)
 
+/*!\ \brief used for generate element smooth l1 */
+struct smooth_l1 {
+  MSHADOW_XINLINE static real_t Map(real_t a) {
+    real_t ret = 0.0f;
+    real_t abs_a = fabs(a);
+    if (abs_a < 1.0f) {
+      ret = 0.5f * a * a;
+    }
+    else {
+      ret = abs_a - 0.5f;
+    }
+    return ret;
+  }
+};
+
+struct smooth_l1_grad {
+  MSHADOW_XINLINE static real_t Map(real_t a) {
+    real_t ret = 0.0f;
+    real_t abs_a = fabs(a);
+    if (abs_a < 1.0f) {
+      ret = a;
+    }
+    else {
+      ret = a < 0.f ? -1.5f : 0.5f;
+    }
+    return ret;
+  }
+};
+
 /*! \brief product reducer */
 struct product {
   /*! \brief do reduction into dst */

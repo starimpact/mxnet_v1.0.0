@@ -327,6 +327,13 @@ MXNET_DLL int MXNDArrayCreateSparseEx(int storage_type,
                                       const mx_uint *aux_shape,
                                       NDArrayHandle *out);
 
+//added by mzhang
+int MXNDArrayLoadFromBytes(const void* param_bytes, size_t param_size,
+                  mx_uint *out_size,
+                  NDArrayHandle** out_arr,
+                  mx_uint *out_name_size,
+                  const char*** out_names);
+
 /*!
  * \brief create a NDArray handle that is loaded from raw bytes.
  * \param buf the head of the raw bytes

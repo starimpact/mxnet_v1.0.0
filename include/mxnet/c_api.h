@@ -328,7 +328,7 @@ MXNET_DLL int MXNDArrayCreateSparseEx(int storage_type,
                                       NDArrayHandle *out);
 
 //added by mzhang
-int MXNDArrayLoadFromBytes(const void* param_bytes, size_t param_size,
+MXNET_DLL int MXNDArrayLoadFromBytes(const void* param_bytes, size_t param_size,
                   mx_uint *out_size,
                   NDArrayHandle** out_arr,
                   mx_uint *out_name_size,

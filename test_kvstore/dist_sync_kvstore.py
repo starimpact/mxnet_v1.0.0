@@ -26,12 +26,12 @@ import numpy.random as rnd
 
 
 keys = ['3','5','9']
-sum_keys = ['sum1','sum2']
-concat_keys = ['concat1','concat2']
+sum_keys = [100000+1,100000+2]
+concat_keys = [1000000+1, 1000000+2]
 shape = (2,3)
 big_shape = (400, 400)
 rate = 1
-stype = 'sum_single'
+stype = 'reduce_sum_alone'
 
 kv = mx.kv.create('dist_sync')
 
@@ -48,8 +48,8 @@ def init_kv():
 
 def init_kv_special_single():
     # init kv dns keys
-    kv.init_kvspecial('sum1', mx.nd.ones(shape), stype)
-    kv.init_kvspecial('sum2', mx.nd.ones(big_shape), stype)
+    kv.init_kvspecial(sum_keys[0], mx.nd.ones(shape), stype)
+    kv.init_kvspecial(sum_keys[1], mx.nd.ones(big_shape), stype)
     # worker info
     my_rank = kv.rank
     nworker = kv.num_workers
@@ -57,9 +57,9 @@ def init_kv_special_single():
 
 def init_kv_special_multi():
     # init kv dns keys
-    kv.init_kvspecial('sum1', mx.nd.ones(shape), 'sum_alone')
-    kv.init_kvspecial('sum2', mx.nd.ones(big_shape), 'sum')
-    kv.init_kvspecial('concat1', mx.nd.ones(shape), 'concat_alone')
+    kv.init_kvspecial(sum_keys[0], mx.nd.ones(shape), 'reduce_sum_alone')
+    kv.init_kvspecial(sum_keys[1], mx.nd.ones(big_shape), 'reduce_sum')
+    kv.init_kvspecial(concat_keys[0], mx.nd.ones(shape), 'concat_alone')
     # worker info
     my_rank = kv.rank
     nworker = kv.num_workers
@@ -68,21 +68,22 @@ def init_kv_special_multi():
 
 
 def test_sync_push_pull_special():
-    kv, my_rank, nworker = init_kv_special_single(sum_keys)
+    kv, my_rank, nworker = init_kv_special_single()
     def check_default_keys(kv, my_rank, nworker):
         nrepeat = 3
         # checks pull after push in loop, because behavior during
         # consecutive pushes doesn't offer any guarantees
         for i in range(nrepeat):
-            kv.push_kvspecial('sum1', mx.nd.ones(shape)*(my_rank+1), stype)
-            kv.push_kvspecial('sum2', mx.nd.ones(big_shape)*(my_rank+1), stype)
+            kv.push_kvspecial(sum_keys[0], mx.nd.ones(shape)*(my_rank+1), stype)
+            kv.push_kvspecial(sum_keys[1], mx.nd.ones(big_shape)*(my_rank+1), stype)
             num = (nworker + 1) * nworker * rate / 2 * (i + 1) + 1
             val = mx.nd.zeros(shape)
-            kv.pull_kvspecial('sum1', val, stype)
+            kv.pull_kvspecial(sum_keys[0], val, stype)
             print 'val', val
             val2 = mx.nd.zeros(big_shape)
-            kv.pull_kvspecial('sum2', val2, stype)
+            kv.pull_kvspecial(sum_keys[1], val2, stype)
             print 'val2', val2
+    check_default_keys(kv, my_rank, nworker)
 
 if __name__ == "__main__":
-    test_sync_push_pull()
+    test_sync_push_pull_special()

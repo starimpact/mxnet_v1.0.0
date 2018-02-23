@@ -520,6 +520,7 @@ class KVStoreDistServer {
                          ps::KVServer<real_t>* server) {
     CHECK_EQ(req_meta.cmd, static_cast<int>(DataHandleType::kKVSpecialPushPull));
     int worker_rank = ps::Postoffice::IDtoRank(req_meta.sender);
+    //std::cout << "DataHandleKVSpecial:" << "worker_rank:" << worker_rank << std::endl;
     std::string strType = req_meta.type;
     // do some check
     CHECK_EQ(req_data.keys.size(), (size_t)1);
@@ -541,24 +542,31 @@ class KVStoreDistServer {
     if (stored_list.size() != 0) {
       CHECK_EQ(stored_list.size(), worker_num) << "store_list size for " 
                         << key << " is not workernumber:" << worker_num;
+    } else {
       stored_list.resize(worker_num);
     }
+    //std::cout << "DataHandleKVSpecial:" << "stored_list:" << stored_list.size() << ", ifpush:" << req_meta.push << std::endl;
 
     // there used several WaitToRead, this is because \a recved's memory
     // could be deallocated when this function returns. so we need to make sure
     // the operators with \a NDArray are actually finished
     if (req_meta.push) {
+//      std::cout << "DataHandleKVSpecial:" << "0" << std::endl;
       int dim = req_data.dims[0];
+//      std::cout << "DataHandleKVSpecial:" << "1" << std::endl;
       CHECK_EQ(req_data.lens[0]%dim, 0);
+//      std::cout << "DataHandleKVSpecial:" << "2" << std::endl;
       TShape dshape(2), dshape_src(2); //initial shape
       dshape[0] = req_data.lens[0] / dim;
       dshape[1] = dim;
       dshape_src = dshape;
+//      std::cout << "DataHandleKVSpecial:" << "dshape:" << dshape << std::endl;
       if (strType.find("concat") != std::string::npos) {
         dshape[0] *= worker_num;
       } else if (strType.find("reduce") != std::string::npos) {
         //keep the intial shape
       }
+      //std::cout << "DataHandleKVSpecial:" << "yyyyyyy_0" << std::endl;
       TBlob recv_blob((real_t*)req_data.vals.data(), // NOLINT(*)
                       dshape, cpu::kDevMask);
       NDArray recved = NDArray(recv_blob, 0);
@@ -569,13 +577,16 @@ class KVStoreDistServer {
 
       if (stored_src.is_none()) {
         stored_src = NDArray(dshape_src, Context());
+        stored_src = 0.f;
       } else {
         CopyFromTo(recved, stored_src);
       }
 
+      //std::cout << "DataHandleKVSpecial:" << "xxxxxx_0" << std::endl;
       if (stored.is_none()) {
         if (merged.request.size() == worker_num) {
           stored = NDArray(dshape, Context());
+          stored = 0.f;
           for (const auto& req : merged.request) {
              server->Response(req);
           }
@@ -583,6 +594,7 @@ class KVStoreDistServer {
         }
       } else if (sync_mode_) {
         // synced push
+        //std::cout << "DataHandleKVSpecial:" << "synced push start" << std::endl;
         if (merged.request.size() == worker_num) {
           if (kvspecialer_) {
             exec_.Exec([this, key, &stored_list, &stored, strType](){

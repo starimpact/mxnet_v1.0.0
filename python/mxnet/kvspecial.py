@@ -21,11 +21,11 @@ class KVSpecial(object):
   
   def __call__(self, key, inlist, out, kvtype):
     if 'concat' in kvtype:
-      concat(key, inlist, out)
+      self.concat(key, inlist, out)
     elif 'sum' in kvtype:
-      sum(key, inlist, out)
+      self.sum_(key, inlist, out)
     elif 'max' in kvtype:
-      max(key, inlist, out)
+      self.max_(key, inlist, out)
     else:
       print 'unknown kvtype:', kvtype
     pass
@@ -40,7 +40,7 @@ class KVSpecial(object):
       out[i*shape_0[0]:(i+1)*shape_0[0]] = inlist[i]
     pass
 
-  def sum(self, key, inlist, out):
+  def sum_(self, key, inlist, out):
     shape_0 = inlist[0].shape
     in_num = len(inlist)
     shape_out = out.shape
@@ -51,7 +51,7 @@ class KVSpecial(object):
       out += inlist[i]
     pass
 
-  def max(self, key, inlist, out):
+  def max_(self, key, inlist, out):
     shape_0 = inlist[0].shape
     in_num = len(inlist)
     shape_out = out.shape

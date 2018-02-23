@@ -211,6 +211,7 @@ class KVStoreDist : public KVStoreLocal {
       comm_->Init(keys[i], values[i].storage_type(), values[i].shape(), values[i].dtype());
     }
     {
+     // std::cout << "InitImpl_KVSpecial:" << "dddddd_0" << std::endl;
       Push_KVSpecial_(keys, values, strType, 0, false);
       // wait until the push is finished
       for (const int key : keys) {
@@ -557,6 +558,7 @@ class KVStoreDist : public KVStoreLocal {
     std::vector<std::vector<NDArray> > grouped_vals;
     GroupKVPairsPush(keys, values, &uniq_keys, &grouped_vals);
 
+   // std::cout << "Push_KVSpecial_:" << "uniq_keys.size():" << uniq_keys.size() << std::endl;
     for (size_t i = 0; i < uniq_keys.size(); ++i) {
       // merge over devices
       int key = uniq_keys[i];
@@ -584,6 +586,7 @@ class KVStoreDist : public KVStoreLocal {
       if (storage_type == kDefaultStorage) {
         TShape shape2d = comm_buf.shape().FlatTo2D();
         PSKV& pskv = EncodeKVSpecialKey(key, shape2d, strType, true);
+        //std::cout << "Push_KVSpecial_:" << "pskv.dims:" << pskv.dims << std::endl;
         PushKVSpecial(key, comm_buf, pskv, strType, priority);
       } else {
         LOG(FATAL) << "unknown storage type";

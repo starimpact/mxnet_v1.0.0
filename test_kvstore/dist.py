@@ -19,10 +19,11 @@
 
 # pylint: skip-file
 import sys
-#sys.path.insert(0, "../../python/")
+sys.path.insert(0, "/home/mingzhang/work/dmlc/python_mxnet/python")
 import mxnet as mx
 import numpy as np
 import numpy.random as rnd
+from mxnet import kvspecial
 
 
 keys = ['3','5','9']
@@ -34,7 +35,9 @@ rate = 1
 stype = 'reduce_sum_alone'
 
 kv = mx.kv.create('dist_sync')
+kv.set_kvspecialer(kvspecial.KVSpecial())
 my_rank = kv.rank
+print 'my rank:', my_rank
 
 kv.init_kvspecial(sum_keys[0], mx.nd.ones(shape), stype)
 kv.push_kvspecial(sum_keys[0], mx.nd.ones(shape)*(my_rank+1), stype)

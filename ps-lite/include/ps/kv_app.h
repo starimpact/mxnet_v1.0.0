@@ -409,6 +409,7 @@ void KVServer<Val>::Process(const Message& msg) {
   meta.type      = msg.meta.body;
   KVPairs<Val> data;
   int n = msg.data.size();
+  //std::cout << "KVServer<Val>::Process:" << n << std::endl;
   if (n) {
     CHECK_GE(n, 2);
     data.keys = msg.data[0];
@@ -418,6 +419,7 @@ void KVServer<Val>::Process(const Message& msg) {
       data.lens = msg.data[2];
       CHECK_EQ(data.lens.size(), data.keys.size());
       if (n > 3) {
+        //std::cout << "KVServer<Val>::Process:" << n << " in dims" << std::endl;
         data.dims = msg.data[3];
         CHECK_EQ(data.dims.size(), data.keys.size());
       }
@@ -492,6 +494,7 @@ void KVWorker<Val>::DefaultSlicer(
     sliced->at(i).first = true;
     auto& kv = sliced->at(i).second;
     kv.keys = send.keys.segment(pos[i], pos[i+1]);
+    kv.dims = send.dims;
     if (send.lens.size()) {
       kv.lens = send.lens.segment(pos[i], pos[i+1]);
       for (int l : kv.lens) val_end += l;
@@ -578,6 +581,7 @@ void KVWorker<Val>::Send_KVSpecial(int timestamp, bool push, int cmd,
         msg.AddData(kvs.lens);
       }
       if (kvs.dims.size()) {
+        //std::cout << "Send_KVSpecial:" << "kvs.dims.size():" << kvs.dims.size() << std::endl;
         msg.AddData(kvs.dims);
       }
     }

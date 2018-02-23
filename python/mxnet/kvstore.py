@@ -164,7 +164,7 @@ class KVStore(object):
              _reduce_ means do reduce on server, will generate a same size array.
         """
         ckeys, cvals, use_str_keys = _ctype_key_value(key, value)
-        check_call(_LIB.MXKVStoreInit(self.handle, mx_uint(len(ckeys)), ckeys, cvals, ctypes.c_char_p(stype)))
+        check_call(_LIB.MXKVStoreInit_KVSpecial(self.handle, mx_uint(len(ckeys)), ckeys, cvals, ctypes.c_char_p(stype)))
         
 
     def push(self, key, value, priority=0):

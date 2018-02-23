@@ -334,7 +334,7 @@ class KVStore(object):
         """
         ckeys, cvals, use_str_keys = _ctype_key_value(key, out)
         check_call(_LIB.MXKVStorePull_KVSpecial(
-                self.handle, mx_uint(len(ckeys)), ckeys, cvals, ctypes.c_char_p(stype), ctypes.c_int(priority)))
+            self.handle, mx_uint(len(ckeys)), ckeys, cvals, ctypes.c_char_p(stype), ctypes.c_int(priority)))
 
     def row_sparse_pull(self, key, out=None, priority=0, row_ids=None):
         """ Pulls a single RowSparseNDArray value or a sequence of RowSparseNDArray values \

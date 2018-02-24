@@ -1,1 +1,1 @@
-python ../tools/kill-mxnet.py hosts zdb python\ dist.py
+python ../tools/kill-mxnet.py hosts mingzha+ python\ dist.py

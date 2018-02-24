@@ -581,6 +581,7 @@ class KVStoreDistServer {
       } else {
         //std::cout << "DataHandleKVSpecial:" << "yyyyyyy_1" << recved.shape() << stored_src.shape() << std::endl;
         CopyFromTo(recved, stored_src);
+        stored_src.WaitToRead();
       }
 
       //std::cout << "DataHandleKVSpecial:" << "xxxxxx_0" << std::endl;
@@ -606,6 +607,7 @@ class KVStoreDistServer {
               kvspecialer_(key, stored_list, &stored, strType);
             });
           }
+          stored.WaitToRead();
           //const float *pftmp = static_cast<const float*>(stored.data().dptr_);
           //std::cout << "DataHandleKVSpecial:stored:" << pftmp[0] << std::endl;
           for (const auto& req : merged.request) {
@@ -613,7 +615,6 @@ class KVStoreDistServer {
              server->Response(req);
           }
           merged.request.clear();
-          stored.WaitToRead();
           //end1 = clock();
           //float cost_0 = (float)(end1 - start1)*1000 / CLOCKS_PER_SEC;
           //std::cout << "do kvspecialer_ time cost[ms]: " << cost_0 << std::endl;

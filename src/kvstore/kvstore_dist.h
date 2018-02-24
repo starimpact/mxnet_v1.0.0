@@ -177,6 +177,7 @@ class KVStoreDist : public KVStoreLocal {
    */
   std::unordered_map<int, PSKV> ps_kv_;
   std::unordered_map<int, ComprPSKV> compr_ps_kv_;
+  std::unordered_map<int, PSKV> ps_kv_special_;
 
   /**
    * \brief serialize access to ps_kv_ or push_ps_kv_/pull_ps_kv_ while encoding keys
@@ -341,7 +342,8 @@ class KVStoreDist : public KVStoreLocal {
       int key = uniq_keys[i];
       // use the same array for merging to guarantee that pull always happens
       // after the previous push on this key
-      auto& recv_buf = comm_buf_[key];
+      auto& recv_buf = comm_special_buf_[key];
+      auto& recv_push_buf = comm_buf_[key];
       const auto storage_type = grouped_vals[i][0]->storage_type();
       CHECK_EQ(storage_type, kDefaultStorage)
                << "Expected stype of value to be kDefaultStorage";
@@ -357,6 +359,7 @@ class KVStoreDist : public KVStoreLocal {
         size_t size = shape2d.Size();
 
         PSKV& pskv = EncodeKVSpecialKey(key, shape2d, strType, false);
+        //std::cout << "pull_from_servers_0:" << std::endl;
 #if MKL_EXPERIMENTAL == 1
         mkl_set_tblob_eager_mode(recv_buf.data());
 #endif
@@ -367,18 +370,21 @@ class KVStoreDist : public KVStoreLocal {
         int cmd = static_cast<int>(DataHandleType::kKVSpecialPushPull);
         CHECK_NOTNULL(ps_worker_)->ZPull_KVSpecial(
           pskv.keys, vals, &pskv.lens, &pskv.dims, strType, cmd, [vals, cb](){ delete vals; cb(); });
+        //std::cout << "pull_from_servers_1:" << std::endl;
       };
 
       CHECK_NOTNULL(Engine::Get())->PushAsync(
           pull_from_servers,
           pinned_ctx_,
           {},
-          {recv_buf.var()},
+          {recv_buf.var(), recv_push_buf.var()},
           FnProperty::kNormal,
           priority,
           PROFILER_MESSAGE("KVStoreDistKVSpecialPull"));
 
+      //std::cout << "Pull_KVSpecial_0:" << recv_buf.shape() << grouped_vals[i][0]->shape() << std::endl;
       comm_->Broadcast(key, recv_buf, grouped_vals[i], priority);
+      //std::cout << "Pull_KVSpecial_1:" << std::endl;
     }
   }
 
@@ -587,7 +593,12 @@ class KVStoreDist : public KVStoreLocal {
         TShape shape2d = comm_buf.shape().FlatTo2D();
         PSKV& pskv = EncodeKVSpecialKey(key, shape2d, strType, true);
         //std::cout << "Push_KVSpecial_:" << "pskv.dims:" << pskv.dims << std::endl;
+        //clock_t start1, end1;
+        //start1 = clock();
         PushKVSpecial(key, comm_buf, pskv, strType, priority);
+        //end1 = clock();
+        //float cost_0 = (float)(end1 - start1)*1000 / CLOCKS_PER_SEC;
+        //std::cout << "async push time cost[ms]: " << cost_0 << std::endl; 
       } else {
         LOG(FATAL) << "unknown storage type";
       }
@@ -868,7 +879,13 @@ class KVStoreDist : public KVStoreLocal {
 
   inline PSKV& EncodeKVSpecialKey(int key, TShape &shape2d, std::string strType, bool is_push) {
     mu_.lock();
-    PSKV& pskv = ps_kv_[key];
+    PSKV *p_pskv = 0;
+    if (is_push) {
+      p_pskv = &ps_kv_[key];
+    } else {
+      p_pskv = &ps_kv_special_[key];
+    }
+    PSKV& pskv = *p_pskv;
     mu_.unlock();
     size_t size = shape2d.Size();
     if (!pskv.keys.empty()) {
@@ -928,6 +945,7 @@ class KVStoreDist : public KVStoreLocal {
    * for the data in pull and for original data in push
    */
   std::unordered_map<int, NDArray> comm_buf_;
+  std::unordered_map<int, NDArray> comm_special_buf_;
   /**
    * \brief buffer for compressed data
    * Used when gradient compression is active and action

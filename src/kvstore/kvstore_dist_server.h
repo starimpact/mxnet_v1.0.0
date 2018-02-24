@@ -551,25 +551,25 @@ class KVStoreDistServer {
     // could be deallocated when this function returns. so we need to make sure
     // the operators with \a NDArray are actually finished
     if (req_meta.push) {
-//      std::cout << "DataHandleKVSpecial:" << "0" << std::endl;
+      //std::cout << "DataHandleKVSpecial:" << "0" << std::endl;
       int dim = req_data.dims[0];
-//      std::cout << "DataHandleKVSpecial:" << "1" << std::endl;
+      //std::cout << "DataHandleKVSpecial:" << "1" << std::endl;
       CHECK_EQ(req_data.lens[0]%dim, 0);
-//      std::cout << "DataHandleKVSpecial:" << "2" << std::endl;
+      //std::cout << "DataHandleKVSpecial:" << "2" << std::endl;
       TShape dshape(2), dshape_src(2); //initial shape
       dshape[0] = req_data.lens[0] / dim;
       dshape[1] = dim;
       dshape_src = dshape;
-//      std::cout << "DataHandleKVSpecial:" << "dshape:" << dshape << std::endl;
+      //std::cout << "DataHandleKVSpecial:" << "dshape:" << dshape << std::endl;
       if (strType.find("concat") != std::string::npos) {
         dshape[0] *= worker_num;
       } else if (strType.find("reduce") != std::string::npos) {
         //keep the intial shape
       }
-      //std::cout << "DataHandleKVSpecial:" << "yyyyyyy_0" << std::endl;
       TBlob recv_blob((real_t*)req_data.vals.data(), // NOLINT(*)
-                      dshape, cpu::kDevMask);
+                      dshape_src, cpu::kDevMask);
       NDArray recved = NDArray(recv_blob, 0);
+      //std::cout << "DataHandleKVSpecial:" << "yyyyyyy_0" << recved.shape() << std::endl;
       auto& stored_src = stored_list[worker_rank];
 
       auto& merged = merge_buf_[key];
@@ -579,6 +579,7 @@ class KVStoreDistServer {
         stored_src = NDArray(dshape_src, Context());
         stored_src = 0.f;
       } else {
+        //std::cout << "DataHandleKVSpecial:" << "yyyyyyy_1" << recved.shape() << stored_src.shape() << std::endl;
         CopyFromTo(recved, stored_src);
       }
 
@@ -594,19 +595,28 @@ class KVStoreDistServer {
         }
       } else if (sync_mode_) {
         // synced push
-        //std::cout << "DataHandleKVSpecial:" << "synced push start" << std::endl;
+        //clock_t start1, end1;
+        //start1 = clock();
+        //std::cout << "DataHandleKVSpecial:" << "synced push start" << merged.request.size() << ", " << worker_num << std::endl;
         if (merged.request.size() == worker_num) {
           if (kvspecialer_) {
+            //std::cout << "DataHandleKVSpecial:" << "call kvspecialer_" << std::endl;
             exec_.Exec([this, key, &stored_list, &stored, strType](){
               CHECK(kvspecialer_);
               kvspecialer_(key, stored_list, &stored, strType);
             });
           }
-          stored.WaitToRead();
+          //const float *pftmp = static_cast<const float*>(stored.data().dptr_);
+          //std::cout << "DataHandleKVSpecial:stored:" << pftmp[0] << std::endl;
           for (const auto& req : merged.request) {
+             //std::cout << "DataHandleKVSpecial:response:" << ps::Postoffice::IDtoRank(req.sender) << std::endl;
              server->Response(req);
           }
           merged.request.clear();
+          stored.WaitToRead();
+          //end1 = clock();
+          //float cost_0 = (float)(end1 - start1)*1000 / CLOCKS_PER_SEC;
+          //std::cout << "do kvspecialer_ time cost[ms]: " << cost_0 << std::endl;
         }
       } else {
         // async push
@@ -616,9 +626,12 @@ class KVStoreDistServer {
       ps::KVPairs<real_t> response;
       CHECK(!stored.is_none()) << "init " << key << " first";
       auto len = stored.shape().Size();
+      const float *pftmp = static_cast<const float*>(stored.data().dptr_);
+      //std::cout << "DataHandleKVSpecial:stored:" << pftmp[0] << ", " << len << std::endl;
       response.keys = req_data.keys;
       response.lens = {len};
       response.vals.CopyFrom(static_cast<const float*>(stored.data().dptr_), len);
+      //std::cout << "DataHandleKVSpecial:" << response.vals << std::endl;
       server->Response(req_meta, response);
     }
   }

@@ -32,7 +32,8 @@ concat_keys = [1000000+1, 1000000+2]
 shape = (2,3)
 big_shape = (400, 400)
 rate = 1
-stype = 'reduce_sum_alone'
+#stype = 'reduce_sum_alone'
+stype = 'concat_alone'
 
 kv = mx.kv.create('dist_sync')
 kv.set_kvspecialer(kvspecial.KVSpecial())
@@ -41,7 +42,12 @@ print 'my rank:', my_rank
 
 kv.init_kvspecial(sum_keys[0], mx.nd.ones(shape), stype)
 kv.push_kvspecial(sum_keys[0], mx.nd.ones(shape)*(my_rank+1), stype)
-val = mx.nd.zeros(shape)
+
+#import time
+#time.sleep(4)
+#val = mx.nd.zeros(shape)
+val = mx.nd.zeros((shape[0]*2, shape[1]))
+print 'val shape:', val.shape
 kv.pull_kvspecial(sum_keys[0], val, stype)
 print 'val', val, kv.rank
 

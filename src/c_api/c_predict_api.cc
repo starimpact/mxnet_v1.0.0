@@ -275,6 +275,30 @@ int MXPredSetInput(PredictorHandle handle,
   API_END();
 }
 
+int MXPredSetInputEx(PredictorHandle handle,
+                     const char* key,
+                     const mx_float* data,
+                     mx_uint size,
+                     int dev_type,
+                     int dev_id) {
+  MXAPIPredictor* p = static_cast<MXAPIPredictor*>(handle);
+  API_BEGIN();
+  auto it = p->key2arg.find(key);
+  if (it == p->key2arg.end()) {
+    LOG(FATAL) << "cannot find input key " << key;
+  }
+  NDArray& nd = p->arg_arrays[it->second];
+  size_t orisize = nd.shape().Size();
+  if (size != orisize) {
+    LOG(FATAL) << "input data size does not match! " << size << " vs " << orisize;
+  }
+  TBlob input((mx_float*)data, nd.shape(), dev_type);
+  NDArray ndinput(input, dev_id);
+  nd.SyncCopyFromNDArray(ndinput);
+  API_END();
+}
+
+
 int MXPredForward(PredictorHandle handle) {
   MXAPIPredictor* p = static_cast<MXAPIPredictor*>(handle);
   API_BEGIN();

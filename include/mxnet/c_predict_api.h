@@ -145,6 +145,17 @@ MXNET_DLL int MXPredSetInput(PredictorHandle handle,
                              const char* key,
                              const mx_float* data,
                              mx_uint size);
+
+/*
+ * \param dev_type device type, 1: cpu, 2: gpu, 3: cpu_pinned
+ * \param dev_id device id 
+*/
+MXNET_DLL int MXPredSetInputEx(PredictorHandle handle,
+                               const char* key,
+                               const mx_float* data,
+                               mx_uint size,
+                               int dev_type,
+                               int dev_id);
 /*!
  * \brief Run a forward pass to get the output.
  * \param handle The handle of the predictor.

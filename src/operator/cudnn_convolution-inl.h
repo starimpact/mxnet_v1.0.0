@@ -79,7 +79,7 @@ class CuDNNConvolutionOp : public Operator {
                     cudnn_forward_compute_type, cudnn_backward_compute_type);
 
     if (!param_.cudnn_tune) {
-      param_.cudnn_tune = dmlc::GetEnv("MXNET_CUDNN_AUTOTUNE_DEFAULT", 1);
+      param_.cudnn_tune = dmlc::GetEnv("MXNET_CUDNN_AUTOTUNE_DEFAULT", 0);
     }
     // In cuDNN_v6, dilated convolution descriptors are compatible with only a
     // single convolution algorithm.  Despite this, we go through the algorithm

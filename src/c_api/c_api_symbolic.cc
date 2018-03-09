@@ -73,9 +73,18 @@ std::vector<uint32_t> ReadOnlyArgIndices(const nnvm::IndexedGraph& idx) {
 // Redirect to NNVM's C API
 int MXListAllOpNames(nn_uint *out_size,
                      const char ***out_array) {
-  mxnet::op::RegisterLegacyOpProp();
-  mxnet::op::RegisterLegacyNDFunc();
-  return NNListAllOpNames(out_size, out_array);
+  static std::mutex mtx;
+  static bool bused = false;
+  int ret = 0;
+  mtx.try_lock();
+  if (!bused) {
+    mxnet::op::RegisterLegacyOpProp();
+    mxnet::op::RegisterLegacyNDFunc();
+    ret = NNListAllOpNames(out_size, out_array);
+    bused = true;
+  }
+  mtx.unlock();
+  return ret;
 }
 
 int MXSymbolListAtomicSymbolCreators(mx_uint *out_size,

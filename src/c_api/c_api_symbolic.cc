@@ -76,14 +76,13 @@ int MXListAllOpNames(nn_uint *out_size,
   static std::mutex mtx;
   static bool bused = false;
   int ret = 0;
-  mtx.try_lock();
-  if (!bused) {
+  if (mtx.try_lock() && !bused) {
+    bused = true;
     mxnet::op::RegisterLegacyOpProp();
     mxnet::op::RegisterLegacyNDFunc();
     ret = NNListAllOpNames(out_size, out_array);
-    bused = true;
+    mtx.unlock();
   }
-  mtx.unlock();
   return ret;
 }
 

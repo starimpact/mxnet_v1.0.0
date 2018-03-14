@@ -74,15 +74,12 @@ std::vector<uint32_t> ReadOnlyArgIndices(const nnvm::IndexedGraph& idx) {
 int MXListAllOpNames(nn_uint *out_size,
                      const char ***out_array) {
   static std::mutex mtx;
-  static bool bused = false;
   int ret = 0;
-  if (mtx.try_lock() && !bused) {
-    bused = true;
-    mxnet::op::RegisterLegacyOpProp();
-    mxnet::op::RegisterLegacyNDFunc();
-    ret = NNListAllOpNames(out_size, out_array);
-    mtx.unlock();
-  }
+  mtx.lock();
+  mxnet::op::RegisterLegacyOpProp();
+  mxnet::op::RegisterLegacyNDFunc();
+  ret = NNListAllOpNames(out_size, out_array);
+  mtx.unlock();
   return ret;
 }
 

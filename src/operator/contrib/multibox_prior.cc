@@ -44,31 +44,21 @@ inline void MultiBoxPriorForward(const Tensor<cpu, 2, DType> &out,
     float center_y = (r + offsets[0]) * step_y;
     for (int c = 0; c < in_width; ++c) {
       float center_x = (c + offsets[1]) * step_x;
-      // ratio = 1, various sizes
       for (int i = 0; i < num_sizes; ++i) {
         float size = sizes[i];
-        float w = size * in_height / in_width / 2;
-        float h = size / 2;
-        out[count][0] = center_x - w;  // xmin
-        out[count][1] = center_y - h;  // ymin
-        out[count][2] = center_x + w;  // xmax
-        out[count][3] = center_y + h;  // ymax
-        ++count;
-      }
-      // various ratios, size = min_size = size[0]
-      float size = sizes[0];
-      for (int j = 1; j < num_ratios; ++j) {
-        float ratio = sqrtf(ratios[j]);
-        float w = size * in_height / in_width * ratio / 2;
-        float h = size / ratio / 2;
-        out[count][0] = center_x - w;  // xmin
-        out[count][1] = center_y - h;  // ymin
-        out[count][2] = center_x + w;  // xmax
-        out[count][3] = center_y + h;  // ymax
-        ++count;
-      }
-    }
-  }
+        for (int j = 0; j < num_ratios; ++j) {
+          float ratio = sqrtf(ratios[j]);
+          float w = size * in_height / in_width * ratio / 2;
+          float h = size / ratio / 2;
+          out[count][0] = center_x - w;  // xmin
+          out[count][1] = center_y - h;  // ymin
+          out[count][2] = center_x + w;  // xmax
+          out[count][3] = center_y + h;  // ymax
+          ++count;
+        } //ratio
+      } //size
+    } //in_width
+  } //in_height
 }
 }  // namespace mshadow
 

@@ -111,7 +111,7 @@ class MultiBoxPriorOp : public Operator {
     // since input sizes are same in each batch, we could share MultiBoxPrior
     const int num_sizes = static_cast<int>(sizes_.size());
     const int num_ratios = static_cast<int>(ratios_.size());
-    const int num_anchors = num_sizes - 1 + num_ratios;  // anchors per location
+    const int num_anchors = num_sizes * num_ratios;  // anchors per location    
     int in_height = in_data[mboxprior_enum::kData].size(2);
     int in_width = in_data[mboxprior_enum::kData].size(3);
     Shape<2> oshape = Shape2(num_anchors * in_width * in_height, 4);
@@ -185,7 +185,7 @@ class MultiBoxPriorProp: public OperatorProperty {
     int num_sizes = param_.sizes.ndim();
     int num_ratios = param_.ratios.ndim();
     oshape[0] = 1;
-    oshape[1] = in_height * in_width * (num_sizes + num_ratios - 1);
+    oshape[1] = in_height * in_width * (num_sizes * num_ratios );
     oshape[2] = 4;
     out_shape->clear();
     out_shape->push_back(oshape);

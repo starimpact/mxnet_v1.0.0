@@ -81,22 +81,15 @@ inline void MultiBoxPriorForward(const Tensor<gpu, 2, DType> &out,
   dim3 dimGrid((in_width * in_height - 1) / num_thread + 1);
   cuda::CheckLaunchParam(dimGrid, dimBlock, "MultiBoxPrior Forward");
 
-  const int stride = 4 * (num_sizes + num_ratios - 1);
+  const int stride = 4 * (num_sizes * num_ratios);
   int offset = 0;
-  // ratio = 1, various sizes
-  for (int i = 0; i < num_sizes; ++i) {
-    cuda::AssignPriors<DType><<<dimGrid, dimBlock, 0, stream>>>(out_ptr,
-      sizes[i], 1.f, in_width, in_height, step_x, step_y, offset_y, offset_x, stride, offset);
-    ++offset;
-  }
-  MULTIBOXPRIOR_CUDA_CHECK(cudaPeekAtLastError());
+  for (int i = 0; i < num_sizes; ++i) { //size loop
+    for (int j = 0; j < num_ratios; ++j) { //ratio loop
+      cuda::AssignPriors<DType><<<dimGrid, dimBlock, 0, stream>>>(out_ptr,
+        sizes[i], sqrtf(ratios[j]), in_width, in_height, step_x, step_y, offset_y, offset_x, stride, offset);
+      ++offset;
+    }
 
-  // size = sizes[0], various ratios
-  for (int j = 1; j < num_ratios; ++j) {
-    cuda::AssignPriors<DType><<<dimGrid, dimBlock, 0, stream>>>(out_ptr,
-      sizes[0], sqrtf(ratios[j]), in_width, in_height, step_x, step_y,
-       offset_y, offset_x, stride, offset);
-    ++offset;
   }
   MULTIBOXPRIOR_CUDA_CHECK(cudaPeekAtLastError());
 }

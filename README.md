@@ -2,13 +2,12 @@ KVStore Speical for Customized KVStore
 =====
 Special KVStore is used for some cases like model parallel for full connection layer.
 
-Support concat, sum, average for now.
+Support concat, sum, max for now.
 You can define your style operation in the python side easily.
 
 Interface:
 ----------
 * set_kvspecialer
-* set_optimizer
 * init_kvspecial
 * push_kvspecial
 * pull_kvspecial

@@ -1,88 +1,93 @@
-Apache MXNet (incubating) for Deep Learning
+KVStore Speical for Customized KVStore
 =====
+Special KVStore is used for some cases like model parallel for full connection layer.
 
-[![Build Status](https://builds.apache.org/job/incubator-mxnet/job/master/badge/icon)](https://builds.apache.org/job/incubator-mxnet/job/master/)
-[![Documentation Status](https://builds.apache.org/job/incubator-mxnet-build-site/badge/icon)](https://mxnet.incubator.apache.org/)
-[![GitHub license](http://dmlc.github.io/img/apache2.svg)](./LICENSE)
+Support concat, sum, average for now.
+You can define your style operation in the python side easily.
 
-![banner](https://raw.githubusercontent.com/dmlc/web-data/master/mxnet/image/banner.png)
-
-Apache MXNet (incubating) is a deep learning framework designed for both *efficiency* and *flexibility*.
-It allows you to ***mix*** [symbolic and imperative programming](https://mxnet.incubator.apache.org/architecture/index.html#deep-learning-system-design-concepts)
-to ***maximize*** efficiency and productivity.
-At its core, MXNet contains a dynamic dependency scheduler that automatically parallelizes both symbolic and imperative operations on the fly.
-A graph optimization layer on top of that makes symbolic execution fast and memory efficient.
-MXNet is portable and lightweight, scaling effectively to multiple GPUs and multiple machines.
-
-MXNet is also more than a deep learning project. It is also a collection of
-[blue prints and guidelines](https://mxnet.incubator.apache.org/architecture/index.html#deep-learning-system-design-concepts) for building
-deep learning systems, and interesting insights of DL systems for hackers.
-
-[![Join the chat at https://gitter.im/dmlc/mxnet](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/dmlc/mxnet?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-
-What's New
+Interface:
 ----------
-* [Version 1.0.0 Release](https://github.com/apache/incubator-mxnet/releases/tag/1.0.0) - MXNet 1.0.0 Release.
-* [Version 0.12.1 Release](https://github.com/apache/incubator-mxnet/releases/tag/0.12.1) - MXNet 0.12.1 Patch Release.
-* [Version 0.12.0 Release](https://github.com/apache/incubator-mxnet/releases/tag/0.12.0) - MXNet 0.12.0 Release.
-* [Version 0.11.0 Release](https://github.com/apache/incubator-mxnet/releases/tag/0.11.0) - MXNet 0.11.0 Release.
-* [Apache Incubator](http://incubator.apache.org/projects/mxnet.html) - We are now an Apache Incubator project.
-* [Version 0.10.0 Release](https://github.com/dmlc/mxnet/releases/tag/v0.10.0) - MXNet 0.10.0 Release.
-* [Version 0.9.3 Release](./docs/architecture/release_note_0_9.md) - First 0.9 official release.
-* [Version 0.9.1 Release (NNVM refactor)](./docs/architecture/release_note_0_9.md) - NNVM branch is merged into master now. An official release will be made soon.
-* [Version 0.8.0 Release](https://github.com/dmlc/mxnet/releases/tag/v0.8.0)
-* [Updated Image Classification with new Pre-trained Models](./example/image-classification)
-* [Python Notebooks for How to Use MXNet](https://github.com/dmlc/mxnet-notebooks)
-* [MKLDNN for Faster CPU Performance](./MKL_README.md)
-* [MXNet Memory Monger, Training Deeper Nets with Sublinear Memory Cost](https://github.com/dmlc/mxnet-memonger)
-* [Tutorial for NVidia GTC 2016](https://github.com/dmlc/mxnet-gtc-tutorial)
-* [Embedding Torch layers and functions in MXNet](https://mxnet.incubator.apache.org/how_to/torch.html)
-* [MXNet.js: Javascript Package for Deep Learning in Browser (without server)
-](https://github.com/dmlc/mxnet.js/)
-* [Design Note: Design Efficient Deep Learning Data Loading Module](https://mxnet.incubator.apache.org/architecture/note_data_loading.html)
-* [MXNet on Mobile Device](https://mxnet.incubator.apache.org/how_to/smart_device.html)
-* [Distributed Training](https://mxnet.incubator.apache.org/how_to/multi_devices.html)
-* [Guide to Creating New Operators (Layers)](https://mxnet.incubator.apache.org/how_to/new_op.html)
-* [Go binding for inference](https://github.com/songtianyi/go-mxnet-predictor)
-* [Amalgamation and Go Binding for Predictors](https://github.com/jdeng/gomxnet/) - Outdated
-* [Large Scale Image Classification](https://github.com/apache/incubator-mxnet/tree/master/example/image-classification)
+* set_kvspecialer
+* set_optimizer
+* init_kvspecial
+* push_kvspecial
+* pull_kvspecial
 
-Contents
---------
-* [Documentation](https://mxnet.incubator.apache.org/) and  [Tutorials](https://mxnet.incubator.apache.org/tutorials/)
-* [Design Notes](https://mxnet.incubator.apache.org/architecture/index.html)
-* [Code Examples](https://github.com/dmlc/mxnet/tree/master/example)
-* [Installation](https://mxnet.incubator.apache.org/get_started/install.html)
-* [Pretrained Models](https://github.com/dmlc/mxnet-model-gallery)
-* [Contribute to MXNet](https://mxnet.incubator.apache.org/community/contribute.html)
-* [Frequent Asked Questions](https://mxnet.incubator.apache.org/how_to/faq.html)
+Demo:
+----------
+More detail is in the folder test_kvstore
+```python
+from mxnet import kvspecial
 
-Features
---------
-* Design notes providing useful insights that can re-used by other DL projects
-* Flexible configuration for arbitrary computation graph
-* Mix and match imperative and symbolic programming to maximize flexibility and efficiency
-* Lightweight, memory efficient and portable to smart devices
-* Scales up to multi GPUs and distributed setting with auto parallelism
-* Support for Python, R, Scala, C++ and Julia
-* Cloud-friendly and directly compatible with S3, HDFS, and Azure
+keys = ['3','5','9']  #support string type keys.
+concat_keys = ['10000001', '10000002']
+shape = (512,5120)
+concat_stype = 'alone_concat' # 'alone' means only calculate in one server. 'concat' means do concat operation.
+kv = mx.kv.create('dist_device_sync') #only sync mode is supported.
+kv.set_kvspecialer(kvspecial.KVSpecial())
+kv.set_optimizer(mx.optimizer.create('test', rescale_grad=0.1))
+kv.init_kvspecial(concat_keys[0], mx.nd.zeros(shape), concat_stype)
+my_rank = kv.rank
+def go_concat(stype):
+    rnd = mx.nd.ones(shape) + my_rank
+    kv.push_kvspecial(concat_keys[0], rnd, stype)
+    if 'concat' in stype:
+        val = mx.nd.zeros((shape[0]*2, shape[1]))
+    kv.pull_kvspecial(concat_keys[0], val, stype)
+    print 'val', val[0:2,0:2], 'val end', val[-3:,-3:], kv.rank
 
-Ask Questions
--------------
-* Please use [mxnet/issues](https://github.com/dmlc/mxnet/issues) for how to use mxnet and reporting bugs
+go_concat(concat_stype)
+```
 
-License
--------
-Licensed under an [Apache-2.0](https://github.com/dmlc/mxnet/blob/master/LICENSE) license.
+Customized Operation Interface
+----------
+In the python file python/mxnet/kvspecial.py
+```python
+ 18 class KVSpecial(object):
+ 19   def __init__(self):
+ 20     pass
+ 21
+ 22   def __call__(self, key, inlist, out, kvtype):
+ 23     if 'concat' in kvtype:
+ 24       self.concat(key, inlist, out)
+ 25     elif 'sum' in kvtype:
+ 26       self.sum_(key, inlist, out)
+ 27     elif 'max' in kvtype:
+ 28       self.max_(key, inlist, out)
+ 29     else:
+ 30       print 'unknown kvtype:', kvtype
+ 31     pass
+ 32
+ 33   def concat(self, key, inlist, out):
+ 34     shape_0 = inlist[0].shape
+ 35     in_num = len(inlist)
+ 36     shape_out = out.shape
+ 37     assert in_num*shape_0[0]==shape_out[0]
+ 38     assert shape_0[1]==shape_out[1]
+ 39     for i in xrange(in_num):
+ 40       out[i*shape_0[0]:(i+1)*shape_0[0]] = inlist[i]
+ 41     pass
+ 42
+ 43   def sum_(self, key, inlist, out):
+ 44     shape_0 = inlist[0].shape
+ 45     in_num = len(inlist)
+ 46     shape_out = out.shape
+ 47     assert shape_0==shape_out
+ 48     assert shape_0[1]==shape_out[1]
+ 49     out[:] = inlist[0]
+ 50     for i in xrange(1, in_num):
+ 51       out += inlist[i]
+ 52     pass
+ 53
+ 54   def max_(self, key, inlist, out):
+ 55     shape_0 = inlist[0].shape
+ 56     in_num = len(inlist)
+ 57     shape_out = out.shape
+ 58     assert shape_0==shape_out
+ 59     assert shape_0[1]==shape_out[1]
+ 60     out[:] = inlist[0]
+ 61     for i in xrange(1, in_num):
+ 62       out[:] = maximum(out, inlist[i])
+ 63     pass
+```
 
-Reference Paper
----------------
-
-Tianqi Chen, Mu Li, Yutian Li, Min Lin, Naiyan Wang, Minjie Wang, Tianjun Xiao,
-Bing Xu, Chiyuan Zhang, and Zheng Zhang.
-[MXNet: A Flexible and Efficient Machine Learning Library for Heterogeneous Distributed Systems](https://github.com/dmlc/web-data/raw/master/mxnet/paper/mxnet-learningsys.pdf).
-In Neural Information Processing Systems, Workshop on Machine Learning Systems, 2015
-
-History
--------
-MXNet emerged from a collaboration by the authors of [cxxnet](https://github.com/dmlc/cxxnet), [minerva](https://github.com/dmlc/minerva), and [purine2](https://github.com/purine/purine2). The project reflects what we have learned from the past projects. MXNet combines aspects of each of these projects to achieve flexibility, speed, and memory efficiency.

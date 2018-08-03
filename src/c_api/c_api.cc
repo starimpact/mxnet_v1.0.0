@@ -815,6 +815,24 @@ int MXKVStoreInitEx(KVStoreHandle handle,
   API_END();
 }
 
+int MXKVStoreInit_KVSpecialEx(KVStoreHandle handle,
+                  mx_uint num,
+                  const char** keys,
+                  NDArrayHandle* vals,
+                  const char *pstrType) {
+  API_BEGIN();
+  std::vector<std::string> v_keys(num);
+  std::vector<NDArray> v_vals(num);
+  for (mx_uint i = 0; i < num; ++i) {
+    v_keys[i] = keys[i];
+    v_vals[i] = *static_cast<NDArray*>(vals[i]);
+  }
+  std::string strType(pstrType);
+  static_cast<KVStore*>(handle)->Init_KVSpecial(v_keys, v_vals, strType);
+  API_END();
+}
+
+
 int MXKVStorePush(KVStoreHandle handle,
                   mx_uint num,
                   const int* keys,
@@ -865,6 +883,25 @@ int MXKVStorePushEx(KVStoreHandle handle,
   API_END();
 }
 
+int MXKVStorePush_KVSpecialEx(KVStoreHandle handle,
+                  mx_uint num,
+                  const char** keys,
+                  NDArrayHandle* vals,
+                  const char *pstrType,
+                  int priority) {
+  API_BEGIN();
+  std::vector<std::string> v_keys(num);
+  std::vector<NDArray> v_vals(num);
+  for (mx_uint i = 0; i < num; ++i) {
+    v_keys[i] = keys[i];
+    v_vals[i] = *static_cast<NDArray*>(vals[i]);
+  }
+  std::string strType(pstrType);
+  static_cast<KVStore*>(handle)->Push_KVSpecial(v_keys, v_vals, strType, priority);
+  API_END();
+}
+
+
 int MXKVStorePull(KVStoreHandle handle,
                   mx_uint num,
                   const int* keys,
@@ -913,6 +950,24 @@ int MXKVStorePullEx(KVStoreHandle handle,
     v_vals[i] = static_cast<NDArray*>(vals[i]);
   }
   static_cast<KVStore*>(handle)->Pull(v_keys, v_vals, priority);
+  API_END();
+}
+
+int MXKVStorePull_KVSpecialEx(KVStoreHandle handle,
+                  mx_uint num,
+                  const char** keys,
+                  NDArrayHandle* vals,
+                  const char* pstrType,
+                  int priority) {
+  API_BEGIN();
+  std::vector<std::string> v_keys(num);
+  std::vector<NDArray*> v_vals(num);
+  for (mx_uint i = 0; i < num; ++i) {
+    v_keys[i] = keys[i];
+    v_vals[i] = static_cast<NDArray*>(vals[i]);
+  }
+  std::string strType(pstrType);
+  static_cast<KVStore*>(handle)->Pull_KVSpecial(v_keys, v_vals, strType, priority);
   API_END();
 }
 

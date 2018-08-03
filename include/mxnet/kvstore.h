@@ -102,6 +102,9 @@ class KVStore {
 
   virtual void Init_KVSpecial(const std::vector<int>& keys,
             const std::vector<NDArray>& values, const std::string strType) = 0; 
+
+  virtual void Init_KVSpecial(const std::vector<std::string>& str_keys,
+            const std::vector<NDArray>& values, const std::string strType) = 0; 
   /*!
    * \brief push a list of key-value pairs into the store
    *
@@ -146,6 +149,11 @@ class KVStore {
             const std::vector<NDArray>& values,
             const std::string strType,
             int priority = 0) = 0;
+
+  virtual void Push_KVSpecial(const std::vector<std::string>& str_keys,
+            const std::vector<NDArray>& values,
+            const std::string strType,
+            int priority = 0) = 0;
   /*!
    * \brief push a list of key-value pairs into the store
    * \param keys the list of keys in string format
@@ -183,6 +191,11 @@ class KVStore {
                     int priority = 0) = 0;
 
   virtual void Pull_KVSpecial(const std::vector<int>& keys,
+            const std::vector<NDArray*>& values,
+            const std::string strType,
+            int priority = 0) = 0;
+
+  virtual void Pull_KVSpecial(const std::vector<std::string>& str_keys,
             const std::vector<NDArray*>& values,
             const std::string strType,
             int priority = 0) = 0;

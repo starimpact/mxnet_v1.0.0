@@ -164,7 +164,10 @@ class KVStore(object):
              _reduce_ means do reduce on server, will generate a same size array.
         """
         ckeys, cvals, use_str_keys = _ctype_key_value(key, value)
-        check_call(_LIB.MXKVStoreInit_KVSpecial(self.handle, mx_uint(len(ckeys)), ckeys, cvals, ctypes.c_char_p(stype)))
+        if use_str_keys:
+          check_call(_LIB.MXKVStoreInit_KVSpecialEx(self.handle, mx_uint(len(ckeys)), ckeys, cvals, ctypes.c_char_p(stype)))
+        else:
+          check_call(_LIB.MXKVStoreInit_KVSpecial(self.handle, mx_uint(len(ckeys)), ckeys, cvals, ctypes.c_char_p(stype)))
         
 
     def push(self, key, value, priority=0):
@@ -254,8 +257,12 @@ class KVStore(object):
              _reduce_ means do reduce on server, will generate a same size array.
         """
         ckeys, cvals, use_str_keys = _ctype_key_value(key, value)
-        check_call(_LIB.MXKVStorePush_KVSpecial(
-            self.handle, mx_uint(len(ckeys)), ckeys, cvals, ctypes.c_char_p(stype), ctypes.c_int(priority)))
+        if use_str_keys:
+          check_call(_LIB.MXKVStorePush_KVSpecialEx(
+              self.handle, mx_uint(len(ckeys)), ckeys, cvals, ctypes.c_char_p(stype), ctypes.c_int(priority)))
+        else:
+          check_call(_LIB.MXKVStorePush_KVSpecial(
+              self.handle, mx_uint(len(ckeys)), ckeys, cvals, ctypes.c_char_p(stype), ctypes.c_int(priority)))
 
 
     def pull(self, key, out=None, priority=0):
@@ -333,8 +340,12 @@ class KVStore(object):
         out size is need to be adapted with stype, such as 'concnat' and 'reduce'.
         """
         ckeys, cvals, use_str_keys = _ctype_key_value(key, out)
-        check_call(_LIB.MXKVStorePull_KVSpecial(
-            self.handle, mx_uint(len(ckeys)), ckeys, cvals, ctypes.c_char_p(stype), ctypes.c_int(priority)))
+        if use_str_keys:
+          check_call(_LIB.MXKVStorePull_KVSpecialEx(
+              self.handle, mx_uint(len(ckeys)), ckeys, cvals, ctypes.c_char_p(stype), ctypes.c_int(priority)))
+        else:
+           check_call(_LIB.MXKVStorePull_KVSpecial(
+              self.handle, mx_uint(len(ckeys)), ckeys, cvals, ctypes.c_char_p(stype), ctypes.c_int(priority)))         
 
     def row_sparse_pull(self, key, out=None, priority=0, row_ids=None):
         """ Pulls a single RowSparseNDArray value or a sequence of RowSparseNDArray values \

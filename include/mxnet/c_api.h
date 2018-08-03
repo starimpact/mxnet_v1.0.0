@@ -1594,6 +1594,11 @@ MXNET_DLL int MXKVStoreInitEx(KVStoreHandle handle,
                               const char** keys,
                               NDArrayHandle* vals);
 
+MXNET_DLL int MXKVStoreInit_KVSpecialEx(KVStoreHandle handle,
+                            mx_uint num,
+                            const char** keys,
+                            NDArrayHandle* vals,
+                            const char* pstrType);
 /*!
  * \brief Push a list of (key,value) pairs to kvstore
  * \param handle handle to the kvstore
@@ -1629,6 +1634,13 @@ MXNET_DLL int MXKVStorePushEx(KVStoreHandle handle,
                               const char** keys,
                               NDArrayHandle* vals,
                               int priority);
+
+MXNET_DLL int MXKVStorePush_KVSpecialEx(KVStoreHandle handle,
+                            mx_uint num,
+                            const char** keys,
+                            NDArrayHandle* vals,
+                            const char* pstrType,
+                            int priority);
 /*!
  * \brief pull a list of (key, value) pairs from the kvstore
  * \param handle handle to the kvstore
@@ -1665,6 +1677,12 @@ MXNET_DLL int MXKVStorePullEx(KVStoreHandle handle,
                               NDArrayHandle* vals,
                               int priority);
 
+MXNET_DLL int MXKVStorePull_KVSpecialEx(KVStoreHandle handle,
+                            mx_uint num,
+                            const char** keys,
+                            NDArrayHandle* vals,
+                            const char* pstrType,
+                            int priority);
 /*!
  * \brief pull a list of (key, value) pairs from the kvstore, where each key is an integer.
  *        The NDArray pulled back will be in row_sparse storage with only the specified

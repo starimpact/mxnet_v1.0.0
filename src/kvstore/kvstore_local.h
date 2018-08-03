@@ -96,6 +96,24 @@ class KVStoreLocal : public KVStore {
     InitImpl_KVSpecial(keys, values, strType);
   }
 
+  void Init_KVSpecial(const std::vector<std::string>& str_keys,
+            const std::vector<NDArray>& values, const std::string strType) override {
+    SetKeyType(kStringKey);
+    std::vector<int> keys(str_keys.size());
+    for (size_t i = 0; i < str_keys.size(); ++i) {
+      auto &str_key = str_keys[i];
+      CHECK(str_key_dict_.find(str_key) == str_key_dict_.end())
+            << "duplicate init of key " << str_key;
+      auto key = next_str_key_++;
+      str_key_dict_[str_key] = key;
+      // record reverse mapping from int to string
+      reverse_str_key_dict_[key] = str_key;
+      keys[i] = key;
+    }
+
+    InitImpl_KVSpecial(keys, values, strType);
+  }
+
   void Push(const std::vector<int>& keys,
             const std::vector<NDArray>& values,
             int priority) override {
@@ -153,6 +171,16 @@ class KVStoreLocal : public KVStore {
     PushImpl(keys, values, priority);
   }
 
+  void Push_KVSpecial(const std::vector<std::string>& str_keys,
+            const std::vector<NDArray>& values,
+            const std::string strType,
+            int priority) {
+    SetKeyType(kStringKey);
+    std::vector<int> keys(str_keys.size());
+    LookupKeys(str_keys, &keys);
+    Push_KVSpecial_(keys, values, strType, priority, true);
+  }
+
   void Pull(const std::vector<std::string>& str_keys,
             const std::vector<NDArray*>& values,
             int priority) override {
@@ -160,6 +188,16 @@ class KVStoreLocal : public KVStore {
     std::vector<int> keys(str_keys.size());
     LookupKeys(str_keys, &keys);
     PullImpl(keys, values, priority);
+  }
+
+  void Pull_KVSpecial(const std::vector<std::string>& str_keys,
+            const std::vector<NDArray*>& values,
+            const std::string strType,
+            int priority) {
+    SetKeyType(kStringKey);
+    std::vector<int> keys(str_keys.size());
+    LookupKeys(str_keys, &keys);
+    Pull_KVSpecial_(keys, values, strType, priority);
   }
 
   void PullRowSparse(const std::vector<std::string>& str_keys,
